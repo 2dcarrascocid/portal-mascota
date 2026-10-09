@@ -1,0 +1,43 @@
+# --- dev-toolkit (repo propio, se clona aparte y link.sh regenera los symlinks) ---
+tools/dev-toolkit/
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+.claude/agents/base
+.claude/skills/base
+.claude/commands/
+.gemini/agents/*.md
+.gemini/skills/base
+.codex/skills/*
+!.codex/skills/local/
+
+# --- evidencia generada por los agentes (queda local) ---
+.claude/evidence/
+.gemini/evidence/
+
+# --- graphify ---
+graphify-out/
+
+# --- dependencias / builds ---
+node_modules/
+dist/
+.serverless/
+coverage/
+
+# --- entornos / secretos ---
+.env
+.env.*
+!.env.example
+
+# --- logs ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- SO / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp

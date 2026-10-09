@@ -1,0 +1,59 @@
+service: portalanimal-backend
+frameworkVersion: '3'
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs20.x  # Modificado para evitar el Warning en v3
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  memorySize: 256
+  timeout: 15
+  httpApi:
+    cors:
+      allowedOrigins:
+        - ${env:FRONTEND_URL}
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+  environment:
+    FRONTEND_URL: ${env:FRONTEND_URL}
+    ACCESS_TOKEN_SECRET: ${env:ACCESS_TOKEN_SECRET}
+    ACCESS_TOKEN_EXPIRES_IN: ${env:ACCESS_TOKEN_EXPIRES_IN, '15m'}
+    SESSION_DAYS: ${env:SESSION_DAYS, '30'}
+    GOOGLE_CLIENT_ID: ${env:GOOGLE_CLIENT_ID, ''}
+    GOOGLE_CLIENT_SECRET: ${env:GOOGLE_CLIENT_SECRET, ''}
+    FACEBOOK_APP_ID: ${env:FACEBOOK_APP_ID, ''}
+    FACEBOOK_APP_SECRET: ${env:FACEBOOK_APP_SECRET, ''}
+    SUPABASE_URL_ANIMAL: ${env:SUPABASE_URL_ANIMAL}
+    SUPABASE_SERVICE_ROLE_KEY_ANIMAL: ${env:SUPABASE_SERVICE_ROLE_KEY_ANIMAL}
+    SMTP_HOST: ${env:SMTP_HOST}
+    SMTP_PORT: ${env:SMTP_PORT}
+    SMTP_USER: ${env:SMTP_USER}
+    SMTP_PASS: ${env:SMTP_PASS}
+    SMTP_SECURE: ${env:SMTP_SECURE, 'false'}
+    SMTP_FROM: ${env:SMTP_FROM}
+    WEBPAY_HOST: ${env:WEBPAY_HOST}
+    WEBPAY_API_KEY: ${env:WEBPAY_API_KEY}
+    WEBPAY_COMMERCE_CODE: ${env:WEBPAY_COMMERCE_CODE}
+
+functions:
+  api:
+    handler: src/handler.api
+    events:
+      - httpApi: 'ANY /{proxy+}'
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 3000
+    lambdaPort: 3005   # Agregado para que no vuelva a colisionar en el 3002
+    noPrependStageInUrl: true

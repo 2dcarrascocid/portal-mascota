@@ -1,0 +1,10 @@
+tools/dev-toolkit/
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+.claude/
+.gemini/
+.codex/
+graphify-out/
+**/package-lock.json
+**/.env*
