@@ -1,14 +1,27 @@
 import { watch } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
+import { ROLES_PERSONAL } from '../lib/catalogos'
+import { SECCIONES_CONFIGURACION } from '../lib/configuracion'
 
 // meta:
 //   publica         -> accesible sin sesión
 //   soloInvitado    -> si hay sesión, se redirige al inicio (login/registro)
 //   sinOrganizacion -> privada, pero no exige tener organización asignada
-//   roles           -> lista de roles permitidos (opcional)
-const PERSONAL = ['ORG_ADMIN', 'VET', 'GROOMER', 'TRAINER']
+//   roles           -> lista de cargos permitidos (opcional)
+//   permiso         -> permiso 'modulo.ver' necesario (opcional)
+const PERSONAL = ROLES_PERSONAL
 const ADMIN_ORG = ['ORG_ADMIN']
+
+const COMPONENTES_CONFIGURACION = {
+  'config-roles': () => import('../views/RolesView.vue'),
+  'config-sucursales': () => import('../views/SucursalesView.vue'),
+  'config-especies': () => import('../views/EspeciesView.vue'),
+  'config-personal': () => import('../views/PersonalView.vue'),
+  'config-especialidades': () => import('../views/EspecialidadesView.vue'),
+  'config-servicios': () => import('../views/ServiciosView.vue'),
+  'config-agendas': () => import('../views/AgendasView.vue'),
+}
 
 const router = createRouter({
   history: createWebHistory(),
@@ -64,46 +77,47 @@ const router = createRouter({
       component: () => import('../views/InicioView.vue'),
     },
     {
-      path: '/sucursales',
-      name: 'sucursales',
-      component: () => import('../views/SucursalesView.vue'),
+      // Mantenedores básicos: submenú + una ruta hija por sección.
+      path: '/configuracion',
+      component: () => import('../views/ConfiguracionView.vue'),
       meta: { roles: PERSONAL },
+      children: [
+        { path: '', name: 'configuracion', component: () => import('../views/ConfiguracionInicioView.vue') },
+        ...SECCIONES_CONFIGURACION.map((s) => ({
+          path: s.path,
+          name: s.name,
+          component: COMPONENTES_CONFIGURACION[s.name],
+          meta: s.soloAdmin ? { roles: ADMIN_ORG } : { permiso: s.permiso },
+        })),
+      ],
+    },
+    // Direcciones anteriores al menú Configuración.
+    { path: '/personal', redirect: { name: 'config-personal' } },
+    { path: '/especialidades', redirect: { name: 'config-especialidades' } },
+    { path: '/agendas', redirect: { name: 'config-agendas' } },
+    { path: '/configuracion/agendas', redirect: { name: 'config-agendas' } },
+    { path: '/catalogos/servicios', redirect: { name: 'config-servicios' } },
+    { path: '/sucursales', redirect: { name: 'config-sucursales' } },
+    { path: '/catalogos/especies', redirect: { name: 'config-especies' } },
+    {
+      // Módulo Agenda: búsqueda de horas y reserva de citas.
+      path: '/agenda',
+      name: 'agenda',
+      component: () => import('../views/AgendaView.vue'),
+      meta: { roles: PERSONAL, permiso: 'citas.ver' },
     },
     {
-      path: '/personal',
-      name: 'personal',
-      component: () => import('../views/PersonalView.vue'),
-      meta: { roles: ADMIN_ORG },
-    },
-    {
-      path: '/especialidades',
-      name: 'especialidades',
-      component: () => import('../views/EspecialidadesView.vue'),
-      meta: { roles: PERSONAL },
-    },
-    {
-      path: '/agendas',
-      name: 'agendas',
-      component: () => import('../views/AgendasView.vue'),
-      meta: { roles: PERSONAL },
-    },
-    {
-      path: '/catalogos/especies',
-      name: 'especies',
-      component: () => import('../views/EspeciesView.vue'),
-      meta: { roles: PERSONAL },
-    },
-    {
-      path: '/catalogos/servicios',
-      name: 'servicios',
-      component: () => import('../views/ServiciosView.vue'),
-      meta: { roles: PERSONAL },
+      // Módulo Recepción: llegada de mascotas y atención hasta el cierre.
+      path: '/recepcion',
+      name: 'recepcion',
+      component: () => import('../views/RecepcionView.vue'),
+      meta: { roles: PERSONAL, permiso: 'recepcion.ver' },
     },
     {
       path: '/tutores',
       name: 'tutores',
       component: () => import('../views/TutoresView.vue'),
-      meta: { roles: PERSONAL },
+      meta: { roles: PERSONAL, permiso: 'tutores.ver' },
     },
     {
       // Destino al que redirige el backend después de Webpay
@@ -120,7 +134,7 @@ const router = createRouter({
   ],
 })
 
-const { autenticado, necesitaEntidad, rol, iniciar } = useAuth()
+const { autenticado, necesitaEntidad, rol, puede, iniciar } = useAuth()
 
 const conRedirect = (name, to) => ({
   name,
@@ -143,6 +157,7 @@ router.beforeEach(async (to) => {
   if (necesitaEntidad.value) return conRedirect('entidad', to)
 
   if (to.meta.roles && !to.meta.roles.includes(rol.value)) return { name: 'inicio' }
+  if (to.meta.permiso && !puede(to.meta.permiso)) return { name: 'inicio' }
 })
 
 // Al cerrar sesión (botón, otra pestaña o refresh fallido) sale de las páginas protegidas.

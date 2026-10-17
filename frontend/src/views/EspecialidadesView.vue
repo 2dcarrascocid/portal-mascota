@@ -2,28 +2,23 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useSpecialties } from '../composables/useSpecialties'
-import { CATEGORIAS_SERVICIO } from '../lib/catalogos'
 import { mensajeError } from '../services/api'
 
-const { esAdminOrg } = useAuth()
+const { puede } = useAuth()
 const { items: especialidades, cargando, error, cargar, crear, actualizar, eliminar } = useSpecialties()
 
 onMounted(cargar)
 
-// Filtro por área: '' = todas, 'GENERAL' = sin área.
-const area = ref('')
 const busqueda = ref('')
 const visibles = computed(() => {
   const q = busqueda.value.trim().toLowerCase()
-  return especialidades.value.filter((e) => {
-    if (area.value === 'GENERAL' && e.category) return false
-    if (area.value && area.value !== 'GENERAL' && e.category !== area.value) return false
-    return !q || e.name.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q)
-  })
+  return especialidades.value.filter(
+    (e) => !q || e.name.toLowerCase().includes(q) || e.description?.toLowerCase().includes(q)
+  )
 })
 
 // ── Formulario ───────────────────────────────────────────────
-const vacio = () => ({ name: '', category: '', description: '', is_active: true })
+const vacio = () => ({ name: '', description: '', is_active: true })
 const form = reactive(vacio())
 const editando = ref(null)
 const mostrarForm = ref(false)
@@ -31,14 +26,14 @@ const errorForm = ref('')
 const guardando = ref(false)
 
 function nueva() {
-  Object.assign(form, vacio(), area.value && area.value !== 'GENERAL' ? { category: area.value } : {})
+  Object.assign(form, vacio())
   editando.value = null
   errorForm.value = ''
   mostrarForm.value = true
 }
 
 function editar(e) {
-  Object.assign(form, { name: e.name, category: e.category ?? '', description: e.description ?? '', is_active: e.is_active })
+  Object.assign(form, { name: e.name, description: e.description ?? '', is_active: e.is_active })
   editando.value = e.id
   errorForm.value = ''
   mostrarForm.value = true
@@ -47,7 +42,7 @@ function editar(e) {
 async function guardar() {
   errorForm.value = ''
   guardando.value = true
-  const datos = { ...form, category: form.category || null }
+  const datos = { ...form }
   try {
     if (editando.value) await actualizar(editando.value, datos)
     else await crear(datos)
@@ -74,27 +69,19 @@ async function borrar(e) {
   <main class="contenedor pagina">
     <div class="pagina-cabecera">
       <h1>Especialidades</h1>
-      <button v-if="esAdminOrg && !mostrarForm" @click="nueva">+ Nueva especialidad</button>
+      <button v-if="puede('especialidades.crear') && !mostrarForm" @click="nueva">+ Nueva especialidad</button>
     </div>
     <p class="suave">
-      Las especialidades se asignan a cada integrante en <RouterLink to="/personal">Personal</RouterLink>. El área
-      sirve para ofrecer solo las que corresponden a cada rol (veterinario, peluquero, adiestrador).
+      Las especialidades se asignan a cada integrante en <RouterLink :to="{ name: 'config-personal' }">Personal</RouterLink>.
     </p>
 
     <form v-if="mostrarForm" class="panel" @submit.prevent="guardar">
       <h2>{{ editando ? 'Editar especialidad' : 'Nueva especialidad' }}</h2>
       <div class="grilla-form">
-        <label>Nombre <input v-model="form.name" required maxlength="80" placeholder="Ej: Dermatología" /></label>
-        <label>
-          Área
-          <select v-model="form.category">
-            <option value="">General (cualquier rol)</option>
-            <option v-for="(etiqueta, valor) in CATEGORIAS_SERVICIO" :key="valor" :value="valor">{{ etiqueta }}</option>
-          </select>
-        </label>
+        <label class="ancho-completo">Nombre <input v-model="form.name" required maxlength="80" placeholder="Ej: Dermatología" /></label>
         <label class="ancho-completo">
           Descripción
-          <textarea v-model="form.description" rows="2" maxlength="500"></textarea>
+          <textarea v-model="form.description" rows="2" required maxlength="500"></textarea>
         </label>
         <label class="check"><input v-model="form.is_active" type="checkbox" /> Activa (se puede asignar)</label>
       </div>
@@ -110,14 +97,6 @@ async function borrar(e) {
         Buscar
         <input v-model="busqueda" type="search" placeholder="Nombre o descripción" />
       </label>
-      <label>
-        Área
-        <select v-model="area">
-          <option value="">Todas</option>
-          <option v-for="(etiqueta, valor) in CATEGORIAS_SERVICIO" :key="valor" :value="valor">{{ etiqueta }}</option>
-          <option value="GENERAL">General</option>
-        </select>
-      </label>
     </div>
 
     <p v-if="error" class="error" role="alert">{{ error }}</p>
@@ -131,9 +110,9 @@ async function borrar(e) {
         <thead>
           <tr>
             <th>Especialidad</th>
-            <th>Área</th>
             <th>Personal</th>
-            <th v-if="esAdminOrg"></th>
+            <th>Servicios</th>
+            <th v-if="puede('especialidades.editar') || puede('especialidades.eliminar')"></th>
           </tr>
         </thead>
         <tbody>
@@ -143,14 +122,17 @@ async function borrar(e) {
               <span v-if="!e.is_active" class="chip gris">Inactiva</span>
               <div v-if="e.description"><small class="suave">{{ e.description }}</small></div>
             </td>
-            <td>
-              <span class="chip" :class="{ gris: !e.category }">{{ CATEGORIAS_SERVICIO[e.category] || 'General' }}</span>
-            </td>
             <td>{{ e.total_personal || '—' }}</td>
-            <td v-if="esAdminOrg">
+            <td>
+              <RouterLink v-if="e.total_servicios" :to="{ name: 'config-servicios', query: { especialidad: e.id } }">
+                {{ e.total_servicios }}
+              </RouterLink>
+              <template v-else>—</template>
+            </td>
+            <td v-if="puede('especialidades.editar') || puede('especialidades.eliminar')">
               <div class="acciones">
-                <button class="secundario pequeno" @click="editar(e)">Editar</button>
-                <button class="peligro pequeno" @click="borrar(e)">Eliminar</button>
+                <button v-if="puede('especialidades.editar')" class="secundario pequeno" @click="editar(e)">Editar</button>
+                <button v-if="puede('especialidades.eliminar')" class="peligro pequeno" @click="borrar(e)">Eliminar</button>
               </div>
             </td>
           </tr>

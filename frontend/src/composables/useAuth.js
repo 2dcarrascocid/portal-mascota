@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 import { api, sesionStorage, onSesionExpirada } from '../services/api'
+import { ROLES_PERSONAL } from '../lib/catalogos'
 
 // Estado compartido por toda la app (módulo singleton).
 // La redirección a /login al cerrar sesión la hace el router observando `autenticado`.
@@ -150,6 +151,11 @@ async function crearOrganizacion(datos) {
   aplicar(data)
 }
 
+// Permisos 'modulo.accion' que entrega /auth/me (el ORG_ADMIN trae todos).
+// Solo deciden qué se muestra: el backend los vuelve a validar.
+const permisos = computed(() => new Set(perfil.value?.permisos ?? []))
+const puede = (permiso) => permisos.value.has(permiso)
+
 export function useAuth() {
   return {
     usuario,
@@ -166,7 +172,8 @@ export function useAuth() {
     esAdmin: computed(() => ['SUPER_ADMIN', 'ORG_ADMIN'].includes(perfil.value?.role)),
     // Módulo de estructura: administra solo el ORG_ADMIN; el resto del personal consulta.
     esAdminOrg: computed(() => perfil.value?.role === 'ORG_ADMIN'),
-    esPersonal: computed(() => ['ORG_ADMIN', 'VET', 'GROOMER', 'TRAINER'].includes(perfil.value?.role)),
+    esPersonal: computed(() => ROLES_PERSONAL.includes(perfil.value?.role)),
+    puede,
     iniciar,
     cargarUsuario,
     loginConEmail,

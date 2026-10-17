@@ -1,5 +1,5 @@
 const { supabase, errorDb } = require('../lib/supabase');
-const { requerirPersonal, requerirAdminOrg, deLaOrganizacion } = require('../lib/acceso');
+const { requerirPersonal, requerirPermiso, deLaOrganizacion } = require('../lib/acceso');
 const v = require('../lib/validar');
 const { HttpError, json, parseJson, handler } = require('../lib/http');
 
@@ -71,7 +71,7 @@ async function obtenerTutor(id, org) {
   return data;
 }
 
-// GET /tutores?q=texto  -> busca por nombre, apellido, RUT o email (máx. 50)
+// GET /tutores?q=texto  -> busca por nombre, apellido, RUT, email, teléfono o mascota (máx. 50)
 module.exports.listar = handler(async (event) => {
   const usuario = await requerirPersonal(event);
   // Se quitan los caracteres con significado en el filtro de PostgREST.
@@ -89,7 +89,21 @@ module.exports.listar = handler(async (event) => {
     .limit(50);
   if (q) {
     const p = `%${q}%`;
-    consulta = consulta.or(`first_name.ilike.${p},last_name.ilike.${p},national_id.ilike.${p},email.ilike.${p}`);
+    const filtros = [`first_name.ilike.${p}`, `last_name.ilike.${p}`, `national_id.ilike.${p}`, `email.ilike.${p}`];
+    // Teléfono: se compara solo por dígitos (da igual cómo se escribió).
+    const digitos = q.replace(/\D/g, '');
+    if (digitos.length >= 4) filtros.push(`phone_digits.like.%${digitos}%`);
+    // Nombre de la mascota: tutores de las mascotas que coinciden.
+    const { data: mascotas, error: errorMascotas } = await supabase()
+      .from('pets')
+      .select('client_id')
+      .eq('organization_id', usuario.organization_id)
+      .ilike('name', p)
+      .limit(50);
+    if (errorMascotas) throw errorDb(errorMascotas);
+    const ids = [...new Set(mascotas.map((m) => m.client_id))];
+    if (ids.length) filtros.push(`id.in.(${ids.join(',')})`);
+    consulta = consulta.or(filtros.join(','));
   }
 
   const { data, error } = await consulta;
@@ -105,7 +119,7 @@ module.exports.obtener = handler(async (event) => {
 
 // POST /tutores  { tutor: {...}, mascotas: [{...}] }  -> tutor + mascotas en una transacción
 module.exports.crear = handler(async (event) => {
-  const usuario = await requerirPersonal(event);
+  const usuario = await requerirPermiso(event, 'tutores.crear');
   const body = parseJson(event);
   const tutor = datosTutor(body.tutor);
   if (body.mascotas != null && !Array.isArray(body.mascotas)) throw new HttpError(400, 'mascotas debe ser una lista');
@@ -124,7 +138,7 @@ module.exports.crear = handler(async (event) => {
 
 // PUT /tutores/{id}
 module.exports.actualizar = handler(async (event) => {
-  const usuario = await requerirPersonal(event);
+  const usuario = await requerirPermiso(event, 'tutores.editar');
   const id = v.uuid(event.pathParameters.id, 'id');
   await deLaOrganizacion('clients', id, usuario);
 
@@ -135,7 +149,7 @@ module.exports.actualizar = handler(async (event) => {
 
 // DELETE /tutores/{id}  (borra también sus mascotas)
 module.exports.eliminar = handler(async (event) => {
-  const usuario = await requerirAdminOrg(event);
+  const usuario = await requerirPermiso(event, 'tutores.eliminar');
   const id = v.uuid(event.pathParameters.id, 'id');
   await deLaOrganizacion('clients', id, usuario);
   const { error } = await supabase().from('clients').delete().eq('id', id);
@@ -145,7 +159,7 @@ module.exports.eliminar = handler(async (event) => {
 
 // POST /tutores/{id}/mascotas
 module.exports.agregarMascota = handler(async (event) => {
-  const usuario = await requerirPersonal(event);
+  const usuario = await requerirPermiso(event, 'tutores.editar');
   const clientId = v.uuid(event.pathParameters.id, 'id');
   await deLaOrganizacion('clients', clientId, usuario);
   const mascota = datosMascota(parseJson(event));
@@ -162,7 +176,7 @@ module.exports.agregarMascota = handler(async (event) => {
 
 // PUT /mascotas/{id}
 module.exports.actualizarMascota = handler(async (event) => {
-  const usuario = await requerirPersonal(event);
+  const usuario = await requerirPermiso(event, 'tutores.editar');
   const id = v.uuid(event.pathParameters.id, 'id');
   await deLaOrganizacion('pets', id, usuario);
   const mascota = datosMascota(parseJson(event));
@@ -175,7 +189,7 @@ module.exports.actualizarMascota = handler(async (event) => {
 
 // DELETE /mascotas/{id}
 module.exports.eliminarMascota = handler(async (event) => {
-  const usuario = await requerirAdminOrg(event);
+  const usuario = await requerirPermiso(event, 'tutores.eliminar');
   const id = v.uuid(event.pathParameters.id, 'id');
   await deLaOrganizacion('pets', id, usuario);
   const { error } = await supabase().from('pets').delete().eq('id', id);

@@ -6,7 +6,7 @@ import { useClients } from '../composables/useClients'
 import { useSpecies } from '../composables/useSpecies'
 import { mensajeError } from '../services/api'
 
-const { esAdminOrg } = useAuth()
+const { puede } = useAuth()
 const {
   tutores,
   cargando,
@@ -120,7 +120,7 @@ const titulos = {
   <main class="contenedor pagina">
     <div class="pagina-cabecera">
       <h1>Tutores y mascotas</h1>
-      <button v-if="!modo" @click="abrir('nuevo')">+ Registrar tutor y mascota</button>
+      <button v-if="!modo && puede('tutores.crear')" @click="abrir('nuevo')">+ Registrar tutor y mascota</button>
     </div>
 
     <!-- Formulario (registro unificado, edición de tutor o de mascota) -->
@@ -204,9 +204,9 @@ const titulos = {
           </small>
         </div>
         <div class="acciones">
-          <button class="secundario pequeno" @click="abrir('mascota', { tutor: t })">+ Mascota</button>
-          <button class="secundario pequeno" @click="abrir('tutor', { tutor: t })">Editar</button>
-          <button v-if="esAdminOrg" class="peligro pequeno" @click="borrarTutor(t)">Eliminar</button>
+          <button v-if="puede('tutores.editar')" class="secundario pequeno" @click="abrir('mascota', { tutor: t })">+ Mascota</button>
+          <button v-if="puede('tutores.editar')" class="secundario pequeno" @click="abrir('tutor', { tutor: t })">Editar</button>
+          <button v-if="puede('tutores.eliminar')" class="peligro pequeno" @click="borrarTutor(t)">Eliminar</button>
         </div>
       </div>
 
@@ -225,8 +225,8 @@ const titulos = {
               <td><small v-if="m.microchip_number" class="suave">Chip {{ m.microchip_number }}</small></td>
               <td>
                 <div class="acciones">
-                  <button class="secundario pequeno" @click="abrir('mascota', { tutor: t, mascota: m })">Editar</button>
-                  <button v-if="esAdminOrg" class="peligro pequeno" @click="borrarMascota(t, m)">Eliminar</button>
+                  <button v-if="puede('tutores.editar')" class="secundario pequeno" @click="abrir('mascota', { tutor: t, mascota: m })">Editar</button>
+                  <button v-if="puede('tutores.eliminar')" class="peligro pequeno" @click="borrarMascota(t, m)">Eliminar</button>
                 </div>
               </td>
             </tr>

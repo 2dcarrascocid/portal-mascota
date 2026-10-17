@@ -8,6 +8,10 @@ const sucursales = require('./functions/sucursales');
 const personal = require('./functions/personal');
 const especialidades = require('./functions/especialidades');
 const agendas = require('./functions/agendas');
+const roles = require('./functions/roles');
+const geo = require('./functions/geo');
+const citas = require('./functions/citas');
+const recepcion = require('./functions/recepcion');
 const catalogos = require('./functions/catalogos');
 const tutores = require('./functions/tutores');
 const notificaciones = require('./functions/notificaciones');
@@ -43,6 +47,7 @@ const rutas = {
   'POST /personal': personal.crear,
   'PUT /personal/:id': personal.actualizar,
   'DELETE /personal/:id': personal.quitar,
+  'PUT /personal/:id/rol': personal.asignarRol,
   'PUT /personal/:id/sucursales': personal.asignarSucursales,
   'PUT /personal/:id/estado': personal.cambiarEstado,
   'POST /personal/:id/invitacion': personal.reenviarInvitacion,
@@ -52,10 +57,43 @@ const rutas = {
   'PUT /especialidades/:id': especialidades.actualizar,
   'DELETE /especialidades/:id': especialidades.eliminar,
 
+  'GET /citas/disponibles': citas.disponibles,
+  'GET /citas': citas.listar,
+  'POST /citas': citas.crear,
+  'PUT /citas/:id': citas.actualizar,
+  'PUT /citas/:id/estado': citas.cambiarEstado,
+  'DELETE /citas/:id': citas.eliminar,
+
+  'GET /recepcion': recepcion.listar,
+  'POST /atenciones': recepcion.crear,
+  'GET /atenciones/:id': recepcion.obtener,
+  'PUT /atenciones/:id': recepcion.actualizar,
+  'POST /atenciones/:id/prestaciones': recepcion.agregarPrestacion,
+  'DELETE /atenciones/:id/prestaciones/:itemId': recepcion.quitarPrestacion,
+  'POST /atenciones/:id/pagos': recepcion.registrarPago,
+  'DELETE /atenciones/:id/pagos/:pagoId': recepcion.quitarPago,
+  'POST /atenciones/:id/cerrar': recepcion.cerrar,
+  'POST /atenciones/:id/anular': recepcion.anular,
+
+  'GET /geo/buscar': geo.buscar,
+  'GET /geo/inversa': geo.inversa,
+
+  'GET /roles': roles.listar,
+  'POST /roles': roles.crear,
+  'PUT /roles/:id': roles.actualizar,
+  'DELETE /roles/:id': roles.eliminar,
+
   'GET /agendas': agendas.listar,
   'POST /agendas': agendas.crear,
   'PUT /agendas/:id': agendas.actualizar,
   'DELETE /agendas/:id': agendas.eliminar,
+  'POST /agendas/copiar': agendas.copiar,
+  'POST /agendas/mover-dia': agendas.moverDia,
+  'GET /agendas/disponibilidad': agendas.disponibilidad,
+  'GET /agendas/excepciones': agendas.listarExcepciones,
+  'POST /agendas/excepciones': agendas.crearExcepcion,
+  'PUT /agendas/excepciones/:id': agendas.actualizarExcepcion,
+  'DELETE /agendas/excepciones/:id': agendas.eliminarExcepcion,
 
   'GET /especies': catalogos.listarEspecies,
   'POST /especies': catalogos.crearEspecie,

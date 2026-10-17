@@ -42,6 +42,8 @@ provider:
     WEBPAY_HOST: ${env:WEBPAY_HOST}
     WEBPAY_API_KEY: ${env:WEBPAY_API_KEY}
     WEBPAY_COMMERCE_CODE: ${env:WEBPAY_COMMERCE_CODE}
+    GEO_PAISES: ${env:GEO_PAISES, 'cl'}  # países para buscar direcciones (OpenStreetMap)
+    ZONA_HORARIA: ${env:ZONA_HORARIA, 'America/Santiago'}  # para no ofrecer turnos que ya pasaron
 
 functions:
   api:

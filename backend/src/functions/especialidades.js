@@ -1,20 +1,22 @@
 // Catálogo de especialidades de la organización (se asignan al personal).
 const { supabase, errorDb } = require('../lib/supabase');
-const { requerirPersonal, requerirAdminOrg, deLaOrganizacion } = require('../lib/acceso');
+const { requerirPersonal, requerirPermiso, deLaOrganizacion } = require('../lib/acceso');
 const v = require('../lib/validar');
 const { HttpError, json, parseJson, handler } = require('../lib/http');
 
-const CATEGORIAS = ['GROOMING', 'VET', 'TRAINING'];
-const COLUMNAS = 'id, name, category, description, is_active, created_at, staff_specialties(count)';
+const COLUMNAS = 'id, name, description, is_active, created_at, staff_specialties(count), specialty_services(count)';
 
-// staff_specialties(count) llega como [{ count: n }].
-const aPublico = ({ staff_specialties: asignaciones, ...e }) => ({ ...e, total_personal: asignaciones?.[0]?.count ?? 0 });
+// Los (count) llegan como [{ count: n }].
+const aPublico = ({ staff_specialties: personal, specialty_services: servicios, ...e }) => ({
+  ...e,
+  total_personal: personal?.[0]?.count ?? 0,
+  total_servicios: servicios?.[0]?.count ?? 0,
+});
 
 function datos(body) {
   return {
     name: v.texto(body.name, 'Nombre', { requerido: true, max: 80 }),
-    category: body.category ? v.opcion(body.category, 'Área', CATEGORIAS) : null,
-    description: v.texto(body.description, 'Descripción', { max: 500 }),
+    description: v.texto(body.description, 'Descripción', { requerido: true, max: 500 }),
     is_active: v.booleano(body.is_active),
   };
 }
@@ -38,7 +40,7 @@ module.exports.listar = handler(async (event) => {
 
 // POST /especialidades
 module.exports.crear = handler(async (event) => {
-  const usuario = await requerirAdminOrg(event);
+  const usuario = await requerirPermiso(event, 'especialidades.crear');
   const { data, error } = await supabase()
     .from('specialties')
     .insert({ ...datos(parseJson(event)), organization_id: usuario.organization_id })
@@ -50,7 +52,7 @@ module.exports.crear = handler(async (event) => {
 
 // PUT /especialidades/{id}
 module.exports.actualizar = handler(async (event) => {
-  const usuario = await requerirAdminOrg(event);
+  const usuario = await requerirPermiso(event, 'especialidades.editar');
   const id = v.uuid(event.pathParameters.id, 'id');
   await deLaOrganizacion('specialties', id, usuario);
   const { data, error } = await supabase()
@@ -65,7 +67,7 @@ module.exports.actualizar = handler(async (event) => {
 
 // DELETE /especialidades/{id}  (se quita también al personal que la tenía)
 module.exports.eliminar = handler(async (event) => {
-  const usuario = await requerirAdminOrg(event);
+  const usuario = await requerirPermiso(event, 'especialidades.eliminar');
   const id = v.uuid(event.pathParameters.id, 'id');
   await deLaOrganizacion('specialties', id, usuario);
   const { error } = await supabase().from('specialties').delete().eq('id', id);

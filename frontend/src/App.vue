@@ -2,27 +2,27 @@
 import { computed } from 'vue'
 import { useAuth } from './composables/useAuth'
 import { ROLES } from './lib/catalogos'
+import { SECCIONES_CONFIGURACION, accesoSeccion } from './lib/configuracion'
 
-const { usuario, perfil, organizacion, autenticado, esAdminOrg, esPersonal, logout } = useAuth()
+const auth = useAuth()
+const { usuario, perfil, organizacion, autenticado, esPersonal, puede, logout } = auth
 
 const nombre = computed(() => perfil.value?.full_name || usuario.value?.email)
 
-// Menú según el rol: el personal opera; solo el ORG_ADMIN administra el personal.
+// Menú según los permisos del rol. Los mantenedores básicos van agrupados
+// en Configuración (con su propio submenú).
 const menu = computed(() => {
   if (!esPersonal.value || !organizacion.value) return []
   return [
-    { to: '/tutores', texto: 'Tutores y mascotas' },
-    { to: '/agendas', texto: 'Agendas' },
-    { to: '/sucursales', texto: 'Sucursales' },
-    ...(esAdminOrg.value
-      ? [
-          { to: '/personal', texto: 'Personal' },
-          { to: '/especialidades', texto: 'Especialidades' },
-        ]
-      : []),
-    { to: '/catalogos/servicios', texto: 'Servicios' },
-    { to: '/catalogos/especies', texto: 'Especies' },
-  ]
+    { to: '/recepcion', texto: 'Recepción', permiso: 'recepcion.ver' },
+    { to: '/agenda', texto: 'Agenda', permiso: 'citas.ver' },
+    { to: '/tutores', texto: 'Tutores y mascotas', permiso: 'tutores.ver' },
+    {
+      to: '/configuracion',
+      texto: '⚙ Configuración',
+      visible: SECCIONES_CONFIGURACION.some((s) => accesoSeccion(s, auth)),
+    },
+  ].filter((m) => (m.permiso ? puede(m.permiso) : m.visible))
 })
 </script>
 
@@ -35,7 +35,7 @@ const menu = computed(() => {
         {{ nombre }}
         <small v-if="organizacion">{{ organizacion.name }}</small>
       </span>
-      <span v-if="perfil" class="etiqueta">{{ ROLES[perfil.role] }}</span>
+      <span v-if="perfil" class="etiqueta">{{ perfil.rol_nombre || ROLES[perfil.role] }}</span>
       <button class="secundario" @click="logout">Salir</button>
     </div>
   </header>

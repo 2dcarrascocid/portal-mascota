@@ -1,6 +1,7 @@
 const { supabase } = require('./supabase');
 const { verificarAcceso } = require('./sesiones');
 const { HttpError, header } = require('./http');
+const { permisosDe } = require('./permisos');
 
 function tokenBearer(event) {
   const auth = header(event, 'authorization') || '';
@@ -10,23 +11,23 @@ function tokenBearer(event) {
 }
 
 // Valida el access token propio (header Authorization) y devuelve
-// { id, email, role, organization_id } o lanza 401/403.
+// { id, email, role, organization_id, permisos } o lanza 401/403.
 // Se consulta la base en cada petición para que desactivar a un usuario o
-// cambiarle el rol tenga efecto inmediato.
+// cambiarle el rol (o los permisos del rol) tenga efecto inmediato.
 async function requerirUsuario(event) {
   const id = verificarAcceso(tokenBearer(event));
 
   const { data: usuario, error } = await supabase()
     .from('usuarios')
-    .select('id, email, role, organization_id, activo')
+    .select('id, email, role, organization_id, activo, rol:roles(permissions)')
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
   if (!usuario) throw new HttpError(401, 'Usuario no encontrado');
   if (!usuario.activo) throw new HttpError(403, 'Usuario desactivado');
 
-  const { activo, ...resto } = usuario;
-  return resto;
+  const { activo, rol, ...resto } = usuario;
+  return { ...resto, permisos: permisosDe(usuario) };
 }
 
 async function requerirRol(event, ...roles) {

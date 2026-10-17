@@ -4,7 +4,7 @@ const { HttpError, json, parseJson, handler } = require('../lib/http');
 const { datosUsuario } = require('./auth');
 
 const TIPOS = ['PRIVATE_COMPANY', 'MUNICIPALITY', 'INDEPENDENT'];
-const ROLES = ['SUPER_ADMIN', 'ORG_ADMIN', 'VET', 'GROOMER', 'TRAINER', 'CLIENT'];
+const ROLES = ['SUPER_ADMIN', 'ORG_ADMIN', 'STAFF', 'VET', 'GROOMER', 'TRAINER', 'CLIENT'];
 
 // Las reglas de autorización están en las RPC (migración 0002); aquí se les
 // pasa el usuario autenticado como p_actor_id.

@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../lib/config');
 const { supabase } = require('../lib/supabase');
 const { requerirUsuario } = require('../lib/auth');
+const { permisosDe } = require('../lib/permisos');
 const { hashPassword, verificarPassword, verificarRelleno } = require('../lib/passwords');
 const sesiones = require('../lib/sesiones');
 const { proveedor } = require('../lib/oauth');
@@ -15,7 +16,7 @@ const MAX_INTENTOS = 5;
 const MINUTOS_BLOQUEO = 15;
 
 const COLUMNAS_PERFIL =
-  'id, email, full_name, avatar_url, phone, role, organization_id, email_verificado_at, created_at';
+  'id, email, full_name, avatar_url, phone, role, role_id, organization_id, email_verificado_at, created_at';
 
 // Solo rutas internas del frontend: evita redirecciones abiertas.
 const rutaInterna = (valor) =>
@@ -47,14 +48,19 @@ async function buscarPorEmail(email) {
 async function datosUsuario({ id }) {
   const { data, error } = await supabase()
     .from('usuarios')
-    .select(`${COLUMNAS_PERFIL}, organization:organizations(*)`)
+    .select(`${COLUMNAS_PERFIL}, organization:organizations(*), rol:roles(name, permissions)`)
     .eq('id', id)
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new HttpError(401, 'Usuario no encontrado');
 
-  const { organization, ...perfil } = data;
-  return { usuario: { id: data.id, email: data.email }, perfil, organizacion: organization };
+  // permisos: lo que el frontend usa para armar el menú (el backend los vuelve a validar).
+  const { organization, rol, ...perfil } = data;
+  return {
+    usuario: { id: data.id, email: data.email },
+    perfil: { ...perfil, rol_nombre: rol?.name ?? null, permisos: permisosDe(data) },
+    organizacion: organization,
+  };
 }
 
 async function respuestaSesion(statusCode, usuarioId, event) {

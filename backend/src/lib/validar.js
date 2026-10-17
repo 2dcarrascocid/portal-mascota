@@ -46,6 +46,14 @@ function numero(valor, campo, { min = 0, requerido = false } = {}) {
   return n;
 }
 
+// Latitud (límite 90) o longitud (límite 180) en grados; 6 decimales (~10 cm).
+function coordenada(valor, campo, limite, { requerido = true } = {}) {
+  if (valor == null || valor === '') return requerido ? falla(campo, 'es obligatoria') : null;
+  const n = Number(valor);
+  if (!Number.isFinite(n) || Math.abs(n) > limite) falla(campo, `debe estar entre -${limite} y ${limite}`);
+  return Number(n.toFixed(6));
+}
+
 function hora(valor, campo) {
   if (!HORA.test(String(valor || ''))) falla(campo, 'hora inválida (HH:MM)');
   return String(valor).slice(0, 5);
@@ -64,4 +72,23 @@ function opcion(valor, campo, opciones) {
 
 const booleano = (valor, porDefecto = true) => (typeof valor === 'boolean' ? valor : porDefecto);
 
-module.exports = { texto, uuid, email, entero, numero, hora, fecha, opcion, booleano };
+// RUT chileno con dígito verificador (módulo 11). Acepta puntos, guion y
+// espacios; devuelve la forma canónica '12345678-9' (K en mayúscula).
+function rut(valor, campo, { requerido = false } = {}) {
+  const t = String(valor ?? '').replace(/[.\s-]/g, '').toUpperCase();
+  if (!t) return requerido ? falla(campo, 'es obligatorio') : null;
+  if (!/^\d{7,8}[\dK]$/.test(t)) falla(campo, 'formato inválido (ej: 12.345.678-9)');
+  const cuerpo = t.slice(0, -1);
+  let suma = 0;
+  let factor = 2;
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += Number(cuerpo[i]) * factor;
+    factor = factor === 7 ? 2 : factor + 1;
+  }
+  const resto = 11 - (suma % 11);
+  const dv = resto === 11 ? '0' : resto === 10 ? 'K' : String(resto);
+  if (t.slice(-1) !== dv) falla(campo, 'dígito verificador incorrecto');
+  return `${cuerpo}-${dv}`;
+}
+
+module.exports = { texto, uuid, email, entero, numero, coordenada, hora, fecha, opcion, booleano, rut };
