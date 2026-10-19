@@ -2,9 +2,11 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useAuth } from '../../composables/useAuth'
 import { useScheduleExceptions } from '../../composables/useSchedules'
+import { conEspecialidad } from '../../composables/useStaff'
 import { TIPOS_EXCEPCION } from '../../lib/catalogos'
 import { hhmm, hoy, rangoFechas, sumarDias } from '../../lib/fechas'
 import { mensajeError } from '../../services/api'
+import { confirmar } from '../../composables/useDialogo'
 
 // 5.2 Excepciones de atención y 5.3 funciones especiales de mantención:
 //   BLOQUEO         no se atiende (feriado, vacaciones, licencia, reunión...)
@@ -15,6 +17,7 @@ const props = defineProps({
   sucursales: { type: Array, required: true },
   profesionales: { type: Array, required: true },
   filtroSucursal: { type: String, default: '' },
+  filtroEspecialidad: { type: String, default: '' },
   filtroProfesional: { type: String, default: '' },
 })
 
@@ -42,8 +45,9 @@ function recargar() {
   })
 }
 
+// Con especialidad: las de profesionales que la tienen (y las de todos).
 const ordenadas = computed(() =>
-  [...excepciones.value].sort(
+  excepciones.value.filter((e) => conEspecialidad(props.profesionales, e.staff_id, props.filtroEspecialidad)).sort(
     (a, b) => a.start_date.localeCompare(b.start_date) || (a.start_time ?? '').localeCompare(b.start_time ?? '')
   )
 )
@@ -156,7 +160,8 @@ async function guardar() {
 }
 
 async function borrar(e) {
-  if (!confirm(`¿Eliminar ${TIPOS_EXCEPCION[e.type].toLowerCase()} del ${rangoFechas(e.start_date, e.end_date)}?`)) return
+  const mensaje = `¿Eliminar ${TIPOS_EXCEPCION[e.type].toLowerCase()} del ${rangoFechas(e.start_date, e.end_date)}?`
+  if (!(await confirmar({ titulo: 'Eliminar excepción', mensaje: mensaje, aceptar: 'Eliminar', peligro: true }))) return
   try {
     await eliminar(e.id)
   } catch (err) {

@@ -6,11 +6,12 @@ const especies = ref([])
 const cargando = ref(false)
 const error = ref('')
 
-async function cargar() {
+// ruta: '/especies' (personal) o '/portal/especies' (tutor: solo el catálogo base).
+async function cargar(ruta = '/especies') {
   cargando.value = true
   error.value = ''
   try {
-    const { data } = await api.get('/especies')
+    const { data } = await api.get(ruta)
     especies.value = data.especies
   } catch (err) {
     error.value = mensajeError(err)

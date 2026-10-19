@@ -1,20 +1,34 @@
 <script setup>
 import { computed } from 'vue'
+import DialogoGlobal from './components/DialogoGlobal.vue'
 import { useAuth } from './composables/useAuth'
 import { ROLES } from './lib/catalogos'
 import { SECCIONES_CONFIGURACION, accesoSeccion } from './lib/configuracion'
 
 const auth = useAuth()
-const { usuario, perfil, organizacion, autenticado, esPersonal, puede, logout } = auth
+const { usuario, perfil, organizacion, autenticado, esPersonal, esTutor, puede, logout } = auth
 
 const nombre = computed(() => perfil.value?.full_name || usuario.value?.email)
+
+// Portal del tutor (rol CLIENT).
+const MENU_TUTOR = [
+  { to: '/mi', texto: 'Inicio', exacto: true },
+  { to: '/mi/reservar', texto: 'Reservar hora' },
+  { to: '/mi/citas', texto: 'Mis citas' },
+  { to: '/mi/mascotas', texto: 'Mis mascotas' },
+  { to: '/mi/sucursales', texto: 'Sucursales cercanas' },
+  { to: '/mi/historial', texto: 'Historial' },
+  { to: '/mi/perfil', texto: 'Mi perfil' },
+]
 
 // Menú según los permisos del rol. Los mantenedores básicos van agrupados
 // en Configuración (con su propio submenú).
 const menu = computed(() => {
+  if (esTutor.value) return MENU_TUTOR
   if (!esPersonal.value || !organizacion.value) return []
   return [
     { to: '/recepcion', texto: 'Recepción', permiso: 'recepcion.ver' },
+    { to: '/caja', texto: 'Pagos y caja', permiso: 'caja.ver' },
     { to: '/agenda', texto: 'Agenda', permiso: 'citas.ver' },
     { to: '/tutores', texto: 'Tutores y mascotas', permiso: 'tutores.ver' },
     {
@@ -35,16 +49,27 @@ const menu = computed(() => {
         {{ nombre }}
         <small v-if="organizacion">{{ organizacion.name }}</small>
       </span>
-      <span v-if="perfil" class="etiqueta">{{ perfil.rol_nombre || ROLES[perfil.role] }}</span>
+      <span v-if="perfil" class="etiqueta">{{ esTutor ? 'Tutor/a' : perfil.rol_nombre || ROLES[perfil.role] }}</span>
       <button class="secundario" @click="logout">Salir</button>
     </div>
   </header>
 
   <nav v-if="autenticado && menu.length" class="menu" aria-label="Secciones">
-    <RouterLink v-for="m in menu" :key="m.to" :to="m.to">{{ m.texto }}</RouterLink>
+    <RouterLink
+      v-for="m in menu"
+      :key="m.to"
+      :to="m.to"
+      :active-class="m.exacto ? '' : 'router-link-active'"
+      :exact-active-class="'router-link-active'"
+    >
+      {{ m.texto }}
+    </RouterLink>
   </nav>
 
   <RouterView />
+
+  <!-- Confirmaciones, avisos y pedidos de texto de toda la app (useDialogo) -->
+  <DialogoGlobal />
 </template>
 
 <style scoped>

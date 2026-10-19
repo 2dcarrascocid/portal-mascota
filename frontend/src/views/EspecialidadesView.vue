@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useSpecialties } from '../composables/useSpecialties'
 import { mensajeError } from '../services/api'
+import { confirmar } from '../composables/useDialogo'
 
 const { puede } = useAuth()
 const { items: especialidades, cargando, error, cargar, crear, actualizar, eliminar } = useSpecialties()
@@ -56,7 +57,7 @@ async function guardar() {
 
 async function borrar(e) {
   const detalle = e.total_personal ? ` Se quitará a ${e.total_personal} persona(s) que la tienen asignada.` : ''
-  if (!confirm(`¿Eliminar la especialidad "${e.name}"?${detalle}`)) return
+  if (!(await confirmar({ titulo: 'Eliminar especialidad', mensaje: `¿Eliminar la especialidad "${e.name}"?${detalle}`, aceptar: 'Eliminar', peligro: true }))) return
   try {
     await eliminar(e.id)
   } catch (err) {

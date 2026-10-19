@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoles } from '../composables/useRoles'
 import { mensajeError } from '../services/api'
+import { confirmar } from '../composables/useDialogo'
 
 const { items: roles, catalogo, cargando, error, cargar, crear, actualizar, eliminar } = useRoles()
 
@@ -93,7 +94,7 @@ async function guardar() {
 
 async function borrar(r) {
   const detalle = r.total_personal ? ` ${r.total_personal} persona(s) volverán a los permisos básicos.` : ''
-  if (!confirm(`¿Eliminar el rol "${r.name}"?${detalle}`)) return
+  if (!(await confirmar({ titulo: 'Eliminar rol', mensaje: `¿Eliminar el rol "${r.name}"?${detalle}`, aceptar: 'Eliminar', peligro: true }))) return
   try {
     await eliminar(r.id)
   } catch (err) {

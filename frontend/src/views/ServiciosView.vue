@@ -6,6 +6,7 @@ import { useServices } from '../composables/useServices'
 import { useSpecialties } from '../composables/useSpecialties'
 import { CATEGORIAS_SERVICIO } from '../lib/catalogos'
 import { mensajeError } from '../services/api'
+import { confirmar } from '../composables/useDialogo'
 
 const { puede } = useAuth()
 const { items: servicios, cargando, error, cargar, crear, actualizar, eliminar } = useServices()
@@ -82,7 +83,7 @@ async function guardar() {
 }
 
 async function borrar(s) {
-  if (!confirm(`¿Eliminar el servicio "${s.name}"?`)) return
+  if (!(await confirmar({ titulo: 'Eliminar servicio', mensaje: `¿Eliminar el servicio "${s.name}"?`, aceptar: 'Eliminar', peligro: true }))) return
   try {
     await eliminar(s.id)
   } catch (err) {

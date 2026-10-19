@@ -34,7 +34,7 @@ const nuevas = ref(0) // reservas hechas en esta visita
 </script>
 
 <template>
-  <main class="contenedor pagina">
+  <main class="contenedor pagina ancha">
     <div class="pagina-cabecera">
       <h1>Agenda</h1>
     </div>
@@ -67,6 +67,10 @@ const nuevas = ref(0) // reservas hechas en esta visita
 </template>
 
 <style scoped>
+/* Búsqueda en dos columnas: más ancho que el resto de las pantallas. */
+.ancha {
+  width: min(100%, 1180px);
+}
 .contador {
   margin-left: 4px;
   font-size: 0.75rem;

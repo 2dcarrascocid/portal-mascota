@@ -15,6 +15,13 @@ async function copiar(datos) {
   return data.agendas
 }
 
+// Nuevo horario: varios bloques (días × tramos) de una vez; todo o nada.
+async function crearVarios(bloques) {
+  const { data } = await api.post('/agendas/lote', { bloques })
+  agendas.items.value.push(...data.agendas)
+  return data.agendas
+}
+
 // Traslada la atención de un día a otro (bloqueo + horarios extra).
 async function moverDia(datos) {
   const { data } = await api.post('/agendas/mover-dia', datos)
@@ -29,7 +36,7 @@ async function disponibilidad(params) {
 }
 
 export function useSchedules() {
-  return { ...agendas, copiar }
+  return { ...agendas, copiar, crearVarios }
 }
 
 export function useScheduleExceptions() {

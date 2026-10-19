@@ -3,6 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useAuth } from '../composables/useAuth'
 import { useSpecies } from '../composables/useSpecies'
 import { mensajeError } from '../services/api'
+import { confirmar } from '../composables/useDialogo'
 
 const { puede } = useAuth()
 const { especies, cargando, error, cargar, crearEspecie, eliminarEspecie, crearRaza, eliminarRaza } = useSpecies()
@@ -34,11 +35,13 @@ const agregarRaza = (e) =>
     nuevaRaza[e.id] = ''
   })
 
-const quitarEspecie = (e) => {
-  if (confirm(`¿Eliminar la especie "${e.name}" y sus razas?`)) ejecutar(() => eliminarEspecie(e.id))
+const quitarEspecie = async (e) => {
+  if (!(await confirmar({ titulo: 'Eliminar especie', mensaje: `¿Eliminar la especie "${e.name}" y sus razas?`, aceptar: 'Eliminar', peligro: true }))) return
+  ejecutar(() => eliminarEspecie(e.id))
 }
-const quitarRaza = (e, r) => {
-  if (confirm(`¿Eliminar la raza "${r.name}"?`)) ejecutar(() => eliminarRaza(e.id, r.id))
+const quitarRaza = async (e, r) => {
+  if (!(await confirmar({ titulo: 'Eliminar raza', mensaje: `¿Eliminar la raza "${r.name}"?`, aceptar: 'Eliminar', peligro: true }))) return
+  ejecutar(() => eliminarRaza(e.id, r.id))
 }
 </script>
 

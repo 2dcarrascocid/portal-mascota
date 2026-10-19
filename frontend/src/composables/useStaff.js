@@ -75,6 +75,11 @@ async function quitar(id) {
   personal.value = personal.value.filter((p) => p.id !== id)
 }
 
+// ¿El profesional (staffId) tiene esa especialidad? Sin especialidad o sin
+// profesional (p. ej. un bloqueo para todos) no se filtra.
+export const conEspecialidad = (profesionales, staffId, specialtyId) =>
+  !specialtyId || !staffId || !!profesionales.find((p) => p.id === staffId)?.specialty_ids?.includes(specialtyId)
+
 export function useStaff() {
   return {
     personal,

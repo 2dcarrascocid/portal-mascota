@@ -34,6 +34,8 @@ module.exports = {
   diasSesion: () => Number(process.env.SESSION_DAYS || 30),
 
   google: () => proveedor('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'),
+  // Para verificar ID tokens de Google Identity Services basta el client id.
+  googleClientId: () => process.env.GOOGLE_CLIENT_ID || null,
   facebook: () => proveedor('FACEBOOK_APP_ID', 'FACEBOOK_APP_SECRET'),
 
   supabase: () => ({

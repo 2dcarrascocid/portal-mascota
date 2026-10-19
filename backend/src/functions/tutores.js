@@ -196,3 +196,5 @@ module.exports.eliminarMascota = handler(async (event) => {
   if (error) throw errorDb(error);
   return json(200, { ok: true });
 });
+
+module.exports.datosMascota = datosMascota;

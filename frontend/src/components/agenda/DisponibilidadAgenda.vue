@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { disponibilidad } from '../../composables/useSchedules'
+import { conEspecialidad } from '../../composables/useStaff'
 import { fechaCorta, hhmm, hoy, lunesDe, sumarDias } from '../../lib/fechas'
 import { mensajeError } from '../../services/api'
 
@@ -10,11 +11,19 @@ const props = defineProps({
   sucursales: { type: Array, required: true },
   profesionales: { type: Array, required: true },
   filtroSucursal: { type: String, default: '' },
+  filtroEspecialidad: { type: String, default: '' },
   filtroProfesional: { type: String, default: '' },
 })
 
 const lunes = ref(lunesDe(hoy()))
-const dias = ref([])
+const todos = ref([])
+// Con especialidad: solo las agendas de profesionales que la tienen.
+const dias = computed(() =>
+  todos.value.map((d) => ({
+    ...d,
+    agendas: d.agendas.filter((a) => conEspecialidad(props.profesionales, a.staff_id, props.filtroEspecialidad)),
+  }))
+)
 const cargando = ref(false)
 const error = ref('')
 
@@ -22,7 +31,7 @@ async function cargar() {
   cargando.value = true
   error.value = ''
   try {
-    dias.value = await disponibilidad({
+    todos.value = await disponibilidad({
       desde: lunes.value,
       hasta: sumarDias(lunes.value, 6),
       ...(props.filtroSucursal && { branchId: props.filtroSucursal }),

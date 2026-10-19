@@ -6,6 +6,7 @@ import { ESTADOS_CITA } from '../../lib/catalogos'
 import { fechaCorta, hhmm, hoy, sumarDias } from '../../lib/fechas'
 import { api, mensajeError } from '../../services/api'
 import SelectorPaciente from './SelectorPaciente.vue'
+import { confirmar, pedirTexto } from '../../composables/useDialogo'
 
 // Citas reservadas: seguimiento de estado, cancelación y vínculo con la
 // ficha (para las que se tomaron sin tutor/mascota).
@@ -69,7 +70,13 @@ const ocupado = ref('')
 async function estado(c, status) {
   let reason
   if (status === 'CANCELADA') {
-    reason = prompt(`Motivo de la cancelación (opcional):`)
+    reason = await pedirTexto({
+      titulo: 'Cancelar cita',
+      etiqueta: 'Motivo de la cancelación (opcional)',
+      aceptar: 'Cancelar cita',
+      cancelar: 'Volver',
+      peligro: true,
+    })
     if (reason === null) return
   }
   ocupado.value = c.id
@@ -84,7 +91,8 @@ async function estado(c, status) {
 }
 
 async function borrar(c) {
-  if (!confirm(`¿Eliminar la cita de ${c.contact_name} (${fechaCorta(c.date)} ${hhmm(c.start_time)})? Úsalo solo si se ingresó por error; si no, cancélala.`)) return
+  const mensaje = `¿Eliminar la cita de ${c.contact_name} (${fechaCorta(c.date)} ${hhmm(c.start_time)})? Úsalo solo si se ingresó por error; si no, cancélala.`
+  if (!(await confirmar({ titulo: 'Eliminar cita', mensaje: mensaje, aceptar: 'Eliminar', peligro: true }))) return
   try {
     await eliminar(c.id)
   } catch (err) {
@@ -206,6 +214,8 @@ async function vincular() {
             </td>
             <td>
               <span class="chip" :class="c.status.toLowerCase()">{{ ESTADOS_CITA[c.status] }}</span>
+              <span v-if="c.payment_status === 'PAGADO'" class="chip gris" title="Reservada y pagada en el portal del tutor">Pagada en línea</span>
+              <span v-else-if="c.payment_status === 'PENDIENTE'" class="chip gris" title="El tutor aún no completa el pago">Pago pendiente</span>
               <div v-if="c.cancel_reason"><small class="suave">{{ c.cancel_reason }}</small></div>
             </td>
             <td>

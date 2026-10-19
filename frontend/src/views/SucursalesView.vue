@@ -6,6 +6,7 @@ import { useAuth } from '../composables/useAuth'
 import { useBranches } from '../composables/useBranches'
 import { miUbicacion } from '../composables/useGeo'
 import { mensajeError } from '../services/api'
+import { confirmar } from '../composables/useDialogo'
 
 const { esAdminOrg, puede } = useAuth()
 const { items: sucursales, cargando, error, cargar, crear, actualizar, eliminar } = useBranches()
@@ -136,7 +137,8 @@ async function cambiarEstado(s) {
 }
 
 async function borrar(s) {
-  if (!confirm(`¿Eliminar la sucursal "${s.name}"? Se quitarán sus asignaciones de personal y agendas.`)) return
+  const mensaje = `¿Eliminar la sucursal "${s.name}"? Se quitarán sus asignaciones de personal y agendas.`
+  if (!(await confirmar({ titulo: 'Eliminar sucursal', mensaje: mensaje, aceptar: 'Eliminar', peligro: true }))) return
   try {
     await eliminar(s.id)
   } catch (err) {

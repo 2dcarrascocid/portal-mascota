@@ -309,3 +309,17 @@ button.pequeno {
   gap: 8px;
   font-size: 0.9rem;
 }
+
+/* --- Impresión (p. ej. el cierre de caja): solo el contenido --- */
+@media print {
+  .barra,
+  .menu,
+  .no-imprimir {
+    display: none !important;
+  }
+  body,
+  .panel {
+    background: #fff;
+    color: #000;
+  }
+}

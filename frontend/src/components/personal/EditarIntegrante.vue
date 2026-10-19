@@ -6,6 +6,7 @@ import { formatearRut, rutValido } from '../../lib/rut'
 import { mensajeError } from '../../services/api'
 import ModalDialogo from '../ModalDialogo.vue'
 import CamposIntegrante from './CamposIntegrante.vue'
+import { confirmar } from '../../composables/useDialogo'
 
 // Edición de datos, especialidades y sucursales de un integrante.
 // El rol se cambia aparte, con RolIntegrante.
@@ -46,7 +47,12 @@ async function guardar() {
   if (
     cambiaSucursales &&
     quitadas.length &&
-    !confirm('Al quitar sucursales se borran los horarios de esta persona en ellas. ¿Continuar?')
+    !(await confirmar({
+      titulo: 'Quitar sucursales',
+      mensaje: 'Al quitar sucursales se borran los horarios de esta persona en ellas. ¿Continuar?',
+      aceptar: 'Continuar',
+      peligro: true,
+    }))
   ) {
     return
   }

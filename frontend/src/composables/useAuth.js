@@ -106,6 +106,13 @@ function loginConProveedor(provider, redirect) {
   window.location.assign(url)
 }
 
+// Botón de Google Identity Services: el backend verifica el ID token
+// (`credential`) y entrega la sesión.
+async function loginConGoogle(credential) {
+  const { data } = await api.post('/auth/google/token', { credential })
+  iniciarSesion(data)
+}
+
 // Recibe los tokens que el backend deja en /auth/callback#access_token=...
 async function completarCallback(fragmento) {
   const p = new URLSearchParams(fragmento.replace(/^#/, ''))
@@ -173,10 +180,13 @@ export function useAuth() {
     // Módulo de estructura: administra solo el ORG_ADMIN; el resto del personal consulta.
     esAdminOrg: computed(() => perfil.value?.role === 'ORG_ADMIN'),
     esPersonal: computed(() => ROLES_PERSONAL.includes(perfil.value?.role)),
+    // Tutor de mascotas: usa el portal del tutor (/mi).
+    esTutor: computed(() => perfil.value?.role === 'CLIENT'),
     puede,
     iniciar,
     cargarUsuario,
     loginConEmail,
+    loginConGoogle,
     registrarConEmail,
     loginConProveedor,
     completarCallback,

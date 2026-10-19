@@ -12,10 +12,12 @@ const roles = require('./functions/roles');
 const geo = require('./functions/geo');
 const citas = require('./functions/citas');
 const recepcion = require('./functions/recepcion');
+const caja = require('./functions/caja');
 const catalogos = require('./functions/catalogos');
 const tutores = require('./functions/tutores');
 const notificaciones = require('./functions/notificaciones');
 const webpay = require('./functions/webpay');
+const portal = require('./functions/portal');
 const { json } = require('./lib/http');
 
 const rutas = {
@@ -28,6 +30,7 @@ const rutas = {
   'POST /auth/reenviar-verificacion': auth.reenviarVerificacion,
   'POST /auth/recuperar': auth.recuperar,
   'POST /auth/restablecer': auth.restablecer,
+  'POST /auth/google/token': auth.googleToken,
   'GET /auth/oauth/google': auth.google,
   'GET /auth/oauth/google/callback': auth.googleCallback,
   'GET /auth/oauth/facebook': auth.facebook,
@@ -75,6 +78,11 @@ const rutas = {
   'POST /atenciones/:id/cerrar': recepcion.cerrar,
   'POST /atenciones/:id/anular': recepcion.anular,
 
+  'GET /caja': caja.resumen,
+  'GET /caja/cierres': caja.listarCierres,
+  'POST /caja/cierres': caja.cerrar,
+  'DELETE /caja/cierres/:id': caja.reabrir,
+
   'GET /geo/buscar': geo.buscar,
   'GET /geo/inversa': geo.inversa,
 
@@ -85,6 +93,7 @@ const rutas = {
 
   'GET /agendas': agendas.listar,
   'POST /agendas': agendas.crear,
+  'POST /agendas/lote': agendas.crearLote,
   'PUT /agendas/:id': agendas.actualizar,
   'DELETE /agendas/:id': agendas.eliminar,
   'POST /agendas/copiar': agendas.copiar,
@@ -113,6 +122,23 @@ const rutas = {
   'POST /tutores/:id/mascotas': tutores.agregarMascota,
   'PUT /mascotas/:id': tutores.actualizarMascota,
   'DELETE /mascotas/:id': tutores.eliminarMascota,
+
+  // Portal del tutor (rol CLIENT)
+  'GET /portal/perfil': portal.obtenerPerfil,
+  'PUT /portal/perfil': portal.guardarPerfil,
+  'GET /portal/especies': portal.especies,
+  'GET /portal/mascotas': portal.listarMascotas,
+  'POST /portal/mascotas': portal.crearMascota,
+  'PUT /portal/mascotas/:id': portal.actualizarMascota,
+  'DELETE /portal/mascotas/:id': portal.eliminarMascota,
+  'GET /portal/sucursales': portal.sucursales,
+  'GET /portal/sucursales/:id': portal.sucursal,
+  'GET /portal/disponibles': portal.disponibles,
+  'GET /portal/citas': portal.listarCitas,
+  'POST /portal/citas': portal.reservar,
+  'POST /portal/citas/:id/pago': portal.pagarCita,
+  'POST /portal/citas/:id/cancelar': portal.cancelarCita,
+  'GET /portal/historial': portal.historial,
 
   'POST /notificaciones/email': notificaciones.enviarEmail,
   'POST /webpay/transacciones': webpay.crear,

@@ -54,6 +54,7 @@ values (
     'especialidades.ver', 'servicios.ver', 'agendas.ver', 'sucursales.ver', 'especies.ver',
     'citas.ver', 'citas.crear', 'citas.editar',
     'recepcion.ver', 'recepcion.crear', 'recepcion.editar',
+    'caja.ver', 'caja.crear', 'caja.editar',
     'tutores.ver', 'tutores.crear', 'tutores.editar'
   ]
 )

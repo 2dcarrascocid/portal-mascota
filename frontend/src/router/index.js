@@ -8,7 +8,8 @@ import { SECCIONES_CONFIGURACION } from '../lib/configuracion'
 //   publica         -> accesible sin sesión
 //   soloInvitado    -> si hay sesión, se redirige al inicio (login/registro)
 //   sinOrganizacion -> privada, pero no exige tener organización asignada
-//   roles           -> lista de cargos permitidos (opcional)
+//   tutor           -> portal del tutor: solo rol CLIENT (sin organización)
+//   roles          -> lista de cargos permitidos (opcional)
 //   permiso         -> permiso 'modulo.ver' necesario (opcional)
 const PERSONAL = ROLES_PERSONAL
 const ADMIN_ORG = ['ORG_ADMIN']
@@ -66,6 +67,28 @@ const router = createRouter({
       meta: { publica: true },
     },
     {
+      // Ingreso del tutor de mascotas (botón de Google Identity Services)
+      path: '/tutor/ingresar',
+      name: 'tutor-login',
+      component: () => import('../views/TutorLoginView.vue'),
+      meta: { publica: true, soloInvitado: true },
+    },
+    // Portal del tutor (rol CLIENT): no depende de pertenecer a una organización.
+    ...[
+      { path: '', name: 'mi-inicio', vista: () => import('../views/tutor/MiInicioView.vue') },
+      { path: 'perfil', name: 'mi-perfil', vista: () => import('../views/tutor/MiPerfilView.vue') },
+      { path: 'mascotas', name: 'mi-mascotas', vista: () => import('../views/tutor/MisMascotasView.vue') },
+      { path: 'sucursales', name: 'mi-sucursales', vista: () => import('../views/tutor/SucursalesCercanasView.vue') },
+      { path: 'reservar', name: 'mi-reservar', vista: () => import('../views/tutor/ReservarView.vue') },
+      { path: 'citas', name: 'mi-citas', vista: () => import('../views/tutor/MisCitasView.vue') },
+      { path: 'historial', name: 'mi-historial', vista: () => import('../views/tutor/HistorialView.vue') },
+    ].map(({ path, name, vista }) => ({
+      path: path ? `/mi/${path}` : '/mi',
+      name,
+      component: vista,
+      meta: { tutor: true },
+    })),
+    {
       path: '/entidad',
       name: 'entidad',
       component: () => import('../views/EntidadView.vue'),
@@ -114,6 +137,13 @@ const router = createRouter({
       meta: { roles: PERSONAL, permiso: 'recepcion.ver' },
     },
     {
+      // Módulo Pagos y caja: resumen de pagos del día, cuadratura y cierre diario.
+      path: '/caja',
+      name: 'caja',
+      component: () => import('../views/CajaView.vue'),
+      meta: { roles: PERSONAL, permiso: 'caja.ver' },
+    },
+    {
       path: '/tutores',
       name: 'tutores',
       component: () => import('../views/TutoresView.vue'),
@@ -124,6 +154,7 @@ const router = createRouter({
       path: '/pago/resultado',
       name: 'pago-resultado',
       component: () => import('../views/PagoResultadoView.vue'),
+      meta: { sinOrganizacion: true },
     },
     {
       path: '/:pathMatch(.*)*',
@@ -134,7 +165,7 @@ const router = createRouter({
   ],
 })
 
-const { autenticado, necesitaEntidad, rol, puede, iniciar } = useAuth()
+const { autenticado, necesitaEntidad, esTutor, rol, puede, iniciar } = useAuth()
 
 const conRedirect = (name, to) => ({
   name,
@@ -148,12 +179,15 @@ router.beforeEach(async (to) => {
     if (to.meta.soloInvitado && autenticado.value) return { name: 'inicio' }
     return
   }
-  if (!autenticado.value) return conRedirect('login', to)
+  if (!autenticado.value) return conRedirect(to.meta.tutor ? 'tutor-login' : 'login', to)
 
+  if (to.meta.tutor) return esTutor.value ? undefined : { name: 'inicio' }
   if (to.meta.sinOrganizacion) {
     if (to.name === 'entidad' && !necesitaEntidad.value) return { name: 'inicio' }
     return
   }
+  // El tutor usa su portal; /entidad le queda disponible para registrar una.
+  if (esTutor.value) return { name: 'mi-inicio' }
   if (necesitaEntidad.value) return conRedirect('entidad', to)
 
   if (to.meta.roles && !to.meta.roles.includes(rol.value)) return { name: 'inicio' }
@@ -162,7 +196,8 @@ router.beforeEach(async (to) => {
 
 // Al cerrar sesión (botón, otra pestaña o refresh fallido) sale de las páginas protegidas.
 watch(autenticado, (activo) => {
-  if (!activo && !router.currentRoute.value.meta.publica) router.push({ name: 'login' })
+  const { meta } = router.currentRoute.value
+  if (!activo && !meta.publica) router.push({ name: meta.tutor ? 'tutor-login' : 'login' })
 })
 
 export default router

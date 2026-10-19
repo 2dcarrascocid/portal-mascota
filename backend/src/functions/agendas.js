@@ -16,6 +16,7 @@ const MAX_DIAS_EXCEPCION = 366;
 const MAX_DIAS_DISPONIBILIDAD = 62;
 
 const hhmm = (t) => t.slice(0, 5);
+const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
 function vigencia(body) {
   const valid_from = v.fecha(body.valid_from, 'Vigente desde');
@@ -107,6 +108,42 @@ module.exports.crear = handler(async (event) => {
   return json(201, { agenda: data });
 });
 
+// Valida bloques nuevos entre sí y contra los guardados; el error indica el bloque.
+async function validarLote(filas) {
+  for (const [i, b] of filas.entries()) {
+    const previos = filas.slice(0, i).filter((o) => o.is_active && o.staff_id === b.staff_id);
+    try {
+      await validarSinCruce(b, null, previos);
+    } catch (err) {
+      if (err instanceof HttpError) {
+        throw new HttpError(err.statusCode, `El ${DIAS_SEMANA[b.day_of_week]} de ${hhmm(b.start_time)} a ${hhmm(b.end_time)}: ${err.message}`);
+      }
+      throw err;
+    }
+  }
+}
+
+// POST /agendas/lote  { bloques: [{ staff_id, branch_id, day_of_week, start_time, end_time, ... }] }
+// Nuevo horario: un bloque por día y tramo (con excepción horaria, dos
+// tramos por día). Todo o nada: si alguno se cruza, no se crea ninguno.
+module.exports.crearLote = handler(async (event) => {
+  const usuario = await requerirPermiso(event, 'agendas.crear');
+  const { bloques } = parseJson(event);
+  if (!Array.isArray(bloques) || !bloques.length || bloques.length > 28) {
+    throw new HttpError(400, 'Indica entre 1 y 28 bloques');
+  }
+  const filas = bloques.map(datos);
+  for (const branchId of new Set(filas.map((f) => f.branch_id))) await requerirSucursal(usuario, branchId);
+  await validarLote(filas);
+
+  const { data, error } = await supabase()
+    .from('schedules')
+    .insert(filas.map((f) => ({ ...f, organization_id: usuario.organization_id })))
+    .select(COLUMNAS);
+  if (error) throw errorAsignacion(error);
+  return json(201, { agendas: data });
+});
+
 // PUT /agendas/{id}
 module.exports.actualizar = handler(async (event) => {
   const usuario = await requerirPermiso(event, 'agendas.editar');
@@ -164,17 +201,7 @@ module.exports.copiar = handler(async (event) => {
     staff_id: destino,
     organization_id: usuario.organization_id,
   }));
-  for (const [i, copia] of copias.entries()) {
-    try {
-      await validarSinCruce(copia, null, copias.slice(0, i).filter((o) => o.is_active));
-    } catch (err) {
-      if (err instanceof HttpError) {
-        const dia = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'][copia.day_of_week];
-        throw new HttpError(err.statusCode, `El ${dia} de ${hhmm(copia.start_time)} a ${hhmm(copia.end_time)}: ${err.message}`);
-      }
-      throw err;
-    }
-  }
+  await validarLote(copias);
 
   const { data, error: errorInsert } = await supabase().from('schedules').insert(copias).select(COLUMNAS);
   if (errorInsert) throw errorAsignacion(errorInsert);

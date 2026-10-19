@@ -7,7 +7,10 @@ const { ahoraLocal } = require('../lib/disponibilidad');
 const v = require('../lib/validar');
 const { HttpError, json, parseJson, handler } = require('../lib/http');
 
-const METODOS_PAGO = ['EFECTIVO', 'DEBITO', 'CREDITO', 'TRANSFERENCIA'];
+const METODOS_PAGO = ['EFECTIVO', 'DEBITO', 'CREDITO', 'TRANSFERENCIA', 'WEBPAY', 'OTRO'];
+
+// Los pagos los registra recepción o caja (módulo Pagos y cierre de caja).
+const PERMISO_PAGOS = ['recepcion.editar', 'caja.editar'];
 
 // Características de la mascota para el listado de recepción.
 const COLUMNAS_MASCOTA = 'id, name, birth_date, weight, species:species(name), breed:breeds(name)';
@@ -18,7 +21,7 @@ const COLUMNAS =
   `client:clients(id, first_name, last_name, national_id, phone), pet:pets!visits_pet_id_fkey(${COLUMNAS_MASCOTA}), ` +
   'appointment:appointments(id, start_time, end_time, service_id), ' +
   'items:visit_items(id, service_id, description, quantity, unit_price, staff_id, created_at), ' +
-  'payments:visit_payments(id, method, amount, reference, created_at)';
+  'payments:visit_payments(id, method, amount, reference, date, created_at)';
 
 const COLUMNAS_CITA =
   'id, branch_id, staff_id, specialty_id, date, start_time, end_time, service_id, client_id, pet_id, contact_name, ' +
@@ -141,7 +144,7 @@ module.exports.listar = handler(async (event) => {
 
 // GET /atenciones/{id}
 module.exports.obtener = handler(async (event) => {
-  const usuario = await requerirPermiso(event, 'recepcion.ver');
+  const usuario = await requerirPermiso(event, ['recepcion.ver', 'caja.ver']);
   const id = v.uuid(event.pathParameters.id, 'id');
   await atencionPermitida(usuario, id, { abierta: false });
   return json(200, { atencion: await obtener(id) });
@@ -202,7 +205,7 @@ module.exports.crear = handler(async (event) => {
       appointmentId,
       usuario,
       'id, branch_id, staff_id, specialty_id, date, service_id, client_id, pet_id, contact_name, contact_phone, notes, ' +
-        'status, pet:pets!appointments_pet_id_fkey(name)'
+        'status, payment_status, pet:pets!appointments_pet_id_fkey(name)'
     );
     await requerirSucursal(usuario, cita.branch_id);
     if (cita.date !== hoy) throw new HttpError(400, 'Solo se puede recibir una cita del día de hoy');
@@ -263,9 +266,37 @@ module.exports.crear = handler(async (event) => {
         if (errorItem) throw errorDb(errorItem);
       }
     }
+
+    // Reserva pagada en el portal del tutor: el pago Webpay pasa a la atención.
+    if (cita.payment_status === 'PAGADO') await traspasarPagoEnLinea(cita.id, data.id, org, usuario.id);
   }
   return json(201, { atencion: await obtener(data.id) });
 });
+
+// Registra en la atención el pago aprobado en línea de su cita. Si falla
+// (p. ej. la caja del día ya está cerrada) la atención queda igual y el pago
+// se puede registrar a mano.
+async function traspasarPagoEnLinea(appointmentId, visitId, org, usuarioId) {
+  const { data: pago, error } = await supabase()
+    .from('online_payments')
+    .select('buy_order, amount')
+    .eq('appointment_id', appointmentId)
+    .eq('status', 'APROBADO')
+    .order('confirmed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !pago) return console.error('Pago en línea de la cita no encontrado', appointmentId, error);
+  const { error: errorPago } = await supabase().from('visit_payments').insert({
+    visit_id: visitId,
+    organization_id: org,
+    method: 'WEBPAY',
+    amount: pago.amount,
+    reference: `Portal ${pago.buy_order}`,
+    date: ahoraLocal().fecha,
+    created_by: usuarioId,
+  });
+  if (errorPago) console.error('No se pudo traspasar el pago en línea a la atención', visitId, errorPago);
+}
 
 // PUT /atenciones/{id}  { observations, staff_id?, specialty_id? }
 module.exports.actualizar = handler(async (event) => {
@@ -336,8 +367,9 @@ module.exports.quitarPrestacion = handler(async (event) => {
 
 // POST /atenciones/{id}/pagos  { method, amount, reference? }
 // Se admite pagar en partes (varios medios); no se puede pagar más que el saldo.
+// Cuenta en la caja de hoy; si ya está cerrada, lo rechaza la base (trigger).
 module.exports.registrarPago = handler(async (event) => {
-  const usuario = await requerirPermiso(event, 'recepcion.editar');
+  const usuario = await requerirPermiso(event, PERMISO_PAGOS);
   const id = v.uuid(event.pathParameters.id, 'id');
   await atencionPermitida(usuario, id);
   const body = parseJson(event);
@@ -356,15 +388,16 @@ module.exports.registrarPago = handler(async (event) => {
       method: v.opcion(body.method, 'Medio de pago', METODOS_PAGO),
       amount,
       reference: v.texto(body.reference, 'Referencia', { max: 80 }),
+      date: ahoraLocal().fecha,
       created_by: usuario.id,
     });
   if (error) throw errorDb(error);
   return json(201, { atencion: await obtener(id) });
 });
 
-// DELETE /atenciones/{id}/pagos/{pagoId}  (corregir un pago mal ingresado)
+// DELETE /atenciones/{id}/pagos/{pagoId}  (corregir un pago mal ingresado; no con su caja cerrada)
 module.exports.quitarPago = handler(async (event) => {
-  const usuario = await requerirPermiso(event, 'recepcion.editar');
+  const usuario = await requerirPermiso(event, PERMISO_PAGOS);
   const id = v.uuid(event.pathParameters.id, 'id');
   const pagoId = v.uuid(event.pathParameters.pagoId, 'pagoId');
   await atencionPermitida(usuario, id);

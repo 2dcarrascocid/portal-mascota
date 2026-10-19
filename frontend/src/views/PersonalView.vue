@@ -10,6 +10,7 @@ import { mensajeError } from '../services/api'
 import NuevoIntegrante from '../components/personal/NuevoIntegrante.vue'
 import EditarIntegrante from '../components/personal/EditarIntegrante.vue'
 import RolIntegrante from '../components/personal/RolIntegrante.vue'
+import { confirmar } from '../composables/useDialogo'
 
 const { usuario, esAdminOrg, puede } = useAuth()
 const { buscar, cambiarEstado, reenviarInvitacion, quitar } = useStaff()
@@ -200,15 +201,17 @@ async function accion(p, fn, exito) {
   }
 }
 
-const alternarEstado = (p) => {
-  if (p.activo && !confirm(`¿Desactivar a ${nombreCompleto(p)}? Perderá el acceso de inmediato.`)) return
+const alternarEstado = async (p) => {
+  const mensaje = `¿Desactivar a ${nombreCompleto(p)}? Perderá el acceso de inmediato.`
+  if (p.activo && !(await confirmar({ titulo: 'Desactivar cuenta', mensaje, aceptar: 'Desactivar', peligro: true }))) return
   accion(p, () => cambiarEstado(p.id, !p.activo), p.activo ? 'Cuenta desactivada' : 'Cuenta reactivada')
 }
 
 const reenviar = (p) => accion(p, () => reenviarInvitacion(p.id), `Invitación reenviada a ${p.email}`)
 
-const quitarDeEntidad = (p) => {
-  if (!confirm(`¿Quitar a ${nombreCompleto(p)} de la entidad? Se borrarán sus sucursales y horarios. Su cuenta seguirá existiendo.`)) return
+const quitarDeEntidad = async (p) => {
+  const mensaje = `¿Quitar a ${nombreCompleto(p)} de la entidad? Se borrarán sus sucursales y horarios. Su cuenta seguirá existiendo.`
+  if (!(await confirmar({ titulo: 'Quitar de la entidad', mensaje, aceptar: 'Quitar', peligro: true }))) return
   accion(p, () => quitar(p.id), 'Integrante quitado de la entidad')
 }
 </script>

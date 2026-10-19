@@ -161,6 +161,16 @@ const visibles = computed(() =>
 )
 const cuenta = (g) => (g.estados ? sinEstado.value.filter((f) => g.estados.includes(f.estado)).length : sinEstado.value.length)
 
+// Paginación del listado (vuelve a la primera al cambiar un filtro).
+const POR_PAGINA = 12
+const pagina = ref(1)
+const totalPaginas = computed(() => Math.max(1, Math.ceil(visibles.value.length / POR_PAGINA)))
+const enPagina = computed(() => visibles.value.slice((pagina.value - 1) * POR_PAGINA, pagina.value * POR_PAGINA))
+watch(filtros, () => (pagina.value = 1), { deep: true })
+watch(totalPaginas, (n) => {
+  if (pagina.value > n) pagina.value = n
+})
+
 // ── Características de la mascota ────────────────────────────
 function edad(nacimiento) {
   if (!nacimiento) return ''
@@ -206,7 +216,7 @@ function alRecibir(atencion) {
 </script>
 
 <template>
-  <main class="contenedor pagina">
+  <main class="contenedor pagina ancha">
     <div class="pagina-cabecera">
       <h1>Recepción</h1>
       <button v-if="puede('recepcion.crear') && esHoy && !sinSucursal" @click="espontanea = true">
@@ -219,8 +229,9 @@ function alRecibir(atencion) {
       recibir mascotas.
     </p>
 
-    <template v-else>
-      <div class="filtros">
+    <div v-else class="dividida">
+      <!-- Izquierda: filtros -->
+      <aside class="panel filtros-lateral" aria-label="Filtros">
         <label>
           Sucursal
           <select v-model="filtros.branchId">
@@ -249,33 +260,35 @@ function alRecibir(atencion) {
             <option v-for="p in opcionesProfesional" :key="p.id" :value="p.id">{{ p.full_name || p.email }}</option>
           </select>
         </label>
-        <label class="buscar">
+        <label>
           Identificar mascota
-          <input v-model="filtros.q" type="search" placeholder="Teléfono, nombre del tutor o de la mascota" />
+          <input v-model="filtros.q" type="search" placeholder="Teléfono, tutor o mascota" />
         </label>
-      </div>
+        <p v-if="!esHoy" class="aviso">
+          Vista de consulta del {{ fechaCorta(filtros.fecha, { anio: true }) }}: la llegada solo se marca el día de hoy.
+        </p>
+      </aside>
 
-      <p v-if="!esHoy" class="aviso">
-        Vista de consulta del {{ fechaCorta(filtros.fecha, { anio: true }) }}: la llegada solo se marca el día de hoy.
-      </p>
+      <!-- Derecha: listado (un solo panel, a la misma altura que los filtros) -->
+      <section class="panel resultados">
+        <header class="cabecera">
+          <h2>Mascotas · {{ fechaCorta(filtros.fecha, { anio: true }) }}</h2>
+          <div class="acciones" role="tablist" aria-label="Estado">
+            <button
+              v-for="g in GRUPOS"
+              :key="g.clave"
+              role="tab"
+              :aria-selected="filtros.estado === g.clave"
+              class="pequeno"
+              :class="{ secundario: filtros.estado !== g.clave }"
+              @click="filtros.estado = g.clave"
+            >
+              {{ g.texto }} <span class="contador">{{ cuenta(g) }}</span>
+            </button>
+          </div>
+        </header>
 
-      <div class="acciones" role="tablist" aria-label="Estado">
-        <button
-          v-for="g in GRUPOS"
-          :key="g.clave"
-          role="tab"
-          :aria-selected="filtros.estado === g.clave"
-          class="pequeno"
-          :class="{ secundario: filtros.estado !== g.clave }"
-          @click="filtros.estado = g.clave"
-        >
-          {{ g.texto }} <span class="contador">{{ cuenta(g) }}</span>
-        </button>
-      </div>
-
-      <p v-if="error" class="error" role="alert">{{ error }}</p>
-
-      <section class="panel tabla-contenedor">
+        <p v-if="error" class="error" role="alert">{{ error }}</p>
         <p v-if="cargando && !filas.length" class="suave">Cargando…</p>
         <template v-else-if="!visibles.length">
           <p class="suave">
@@ -289,7 +302,8 @@ function alRecibir(atencion) {
             Registrar como atención espontánea
           </button>
         </template>
-        <table v-else class="tabla">
+        <div v-else class="tabla-contenedor">
+        <table class="tabla">
           <thead>
             <tr>
               <th>Hora</th>
@@ -302,7 +316,7 @@ function alRecibir(atencion) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="f in visibles" :key="f.clave" :class="{ apagada: f.estado === 'ANULADA' }" :style="{ opacity: ocupado === f.cita?.id ? 0.5 : undefined }">
+            <tr v-for="f in enPagina" :key="f.clave" :class="{ apagada: f.estado === 'ANULADA' }" :style="{ opacity: ocupado === f.cita?.id ? 0.5 : undefined }">
               <td>
                 <strong>{{ f.hora }}</strong>
                 <div>
@@ -362,8 +376,17 @@ function alRecibir(atencion) {
             </tr>
           </tbody>
         </table>
+        </div>
+
+        <nav v-if="totalPaginas > 1" class="paginador" aria-label="Páginas">
+          <button type="button" class="secundario pequeno" :disabled="pagina === 1" @click="pagina--">‹ Anterior</button>
+          <span>Página {{ pagina }} de {{ totalPaginas }}</span>
+          <button type="button" class="secundario pequeno" :disabled="pagina === totalPaginas" @click="pagina++">
+            Siguiente ›
+          </button>
+        </nav>
       </section>
-    </template>
+    </div>
 
     <DetalleAtencion
       v-if="detalle"
@@ -388,14 +411,73 @@ function alRecibir(atencion) {
 </template>
 
 <style scoped>
-.buscar {
-  flex: 1;
-  min-width: 220px;
+/* Dos columnas, como Agenda › Buscar hora: filtros | listado. */
+.ancha {
+  width: min(100%, 1180px);
+}
+.dividida {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch; /* misma altura arriba y mismo alto */
+}
+.filtros-lateral {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.filtros-lateral label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.85rem;
+  min-width: 0;
+}
+.filtros-lateral input,
+.filtros-lateral select {
+  width: 100%;
+  min-width: 0;
+}
+.filtros-lateral .aviso {
+  font-size: 0.85rem;
+}
+.resultados {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cabecera h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.resultados p {
+  margin: 0;
+}
+.paginador {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 0.9rem;
 }
 .fecha {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+@media (max-width: 760px) {
+  .dividida {
+    grid-template-columns: 1fr;
+  }
 }
 .aviso {
   color: var(--aviso);

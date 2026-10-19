@@ -14,6 +14,7 @@ const MODULOS = [
   { clave: 'especies', nombre: 'Especies y razas', grupo: 'Configuración' },
   { clave: 'citas', nombre: 'Agenda (citas)', grupo: 'Operación' },
   { clave: 'recepcion', nombre: 'Recepción y atenciones', grupo: 'Operación' },
+  { clave: 'caja', nombre: 'Pagos y cierre de caja', grupo: 'Operación' },
   { clave: 'tutores', nombre: 'Tutores y mascotas', grupo: 'Operación' },
 ];
 
@@ -22,6 +23,7 @@ const PERMISOS = MODULOS.flatMap((m) => ACCIONES.map((a) => `${m.clave}.${a}`));
 // Personal sin rol asignado: lo que podía hacer antes de existir los roles
 // (consultar todo menos el personal, registrar/editar tutores y mascotas)
 // y agendar citas y recibir/atender en recepción (anular queda para roles).
+// En caja solo consulta el resumen: cerrar y reabrir quedan para roles.
 const PERMISOS_BASICOS = [
   'especialidades.ver',
   'servicios.ver',
@@ -34,6 +36,7 @@ const PERMISOS_BASICOS = [
   'recepcion.ver',
   'recepcion.crear',
   'recepcion.editar',
+  'caja.ver',
   'tutores.ver',
   'tutores.crear',
   'tutores.editar',

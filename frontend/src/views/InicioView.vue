@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import EstadoSistema from '../components/EstadoSistema.vue'
 import { useAuth } from '../composables/useAuth'
+import { irAWebpay } from '../lib/webpay'
 import { api, mensajeError } from '../services/api'
 
 const { usuario, perfil } = useAuth()
@@ -16,16 +17,7 @@ async function pagar() {
   pagando.value = true
   try {
     const { data } = await api.post('/webpay/transacciones', { amount: Number(monto.value) })
-    const form = document.createElement('form')
-    form.method = 'POST'
-    form.action = data.url
-    const input = document.createElement('input')
-    input.type = 'hidden'
-    input.name = 'token_ws'
-    input.value = data.token
-    form.appendChild(input)
-    document.body.appendChild(form)
-    form.submit()
+    irAWebpay(data)
   } catch (err) {
     errorPago.value = mensajeError(err)
     pagando.value = false

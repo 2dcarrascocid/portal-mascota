@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useStaff } from '../../composables/useStaff'
 import { mensajeError } from '../../services/api'
 import ModalDialogo from '../ModalDialogo.vue'
+import { confirmar } from '../../composables/useDialogo'
 
 // Asignación de rol (solo ORG_ADMIN): administrador con acceso total, o un
 // rol de permisos ('' = permisos básicos). A un cliente lo convierte en personal.
@@ -21,7 +22,8 @@ const guardando = ref(false)
 
 async function guardar() {
   error.value = ''
-  if (seleccion.value === ADMIN && p.role !== 'ORG_ADMIN' && !confirm(`¿Dar acceso total de administrador a ${p.full_name || p.email}?`)) {
+  const mensaje = `¿Dar acceso total de administrador a ${p.full_name || p.email}?`
+  if (seleccion.value === ADMIN && p.role !== 'ORG_ADMIN' && !(await confirmar({ titulo: 'Acceso de administrador', mensaje, aceptar: 'Dar acceso total' }))) {
     return
   }
   guardando.value = true

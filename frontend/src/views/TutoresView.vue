@@ -5,6 +5,7 @@ import { useAuth } from '../composables/useAuth'
 import { useClients } from '../composables/useClients'
 import { useSpecies } from '../composables/useSpecies'
 import { mensajeError } from '../services/api'
+import { confirmar } from '../composables/useDialogo'
 
 const { puede } = useAuth()
 const {
@@ -93,7 +94,7 @@ async function guardar() {
 }
 
 async function borrarTutor(t) {
-  if (!confirm(`¿Eliminar a ${t.first_name} ${t.last_name} y sus ${t.pets.length} mascota(s)?`)) return
+  if (!(await confirmar({ titulo: 'Eliminar tutor', mensaje: `¿Eliminar a ${t.first_name} ${t.last_name} y sus ${t.pets.length} mascota(s)?`, aceptar: 'Eliminar', peligro: true }))) return
   try {
     await eliminar(t.id)
   } catch (err) {
@@ -102,7 +103,7 @@ async function borrarTutor(t) {
 }
 
 async function borrarMascota(t, m) {
-  if (!confirm(`¿Eliminar a ${m.name}?`)) return
+  if (!(await confirmar({ titulo: 'Eliminar mascota', mensaje: `¿Eliminar a ${m.name}?`, aceptar: 'Eliminar', peligro: true }))) return
   try {
     await eliminarMascota(t.id, m.id)
   } catch (err) {

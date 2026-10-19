@@ -6,6 +6,7 @@ import { useAuth } from '../../composables/useAuth'
 import { ESTADOS_ATENCION, MEDIOS_PAGO } from '../../lib/catalogos'
 import { hhmm } from '../../lib/fechas'
 import { mensajeError } from '../../services/api'
+import { confirmar, pedirTexto } from '../../composables/useDialogo'
 
 // Atención de una mascota en recepción, paso a paso:
 // llegada -> observaciones -> prestaciones -> pago -> cierre.
@@ -144,21 +145,29 @@ async function registrarPago() {
   if (ok) pago.reference = ''
 }
 
-function quitarPago(p) {
-  if (!confirm(`¿Quitar el pago de ${pesos(p.amount)} (${MEDIOS_PAGO[p.method]})?`)) return
+async function quitarPago(p) {
+  const mensaje = `¿Quitar el pago de ${pesos(p.amount)} (${MEDIOS_PAGO[p.method]})?`
+  if (!(await confirmar({ titulo: 'Quitar pago', mensaje, aceptar: 'Quitar', peligro: true }))) return
   ejecutar(() => recepcion.quitarPago(a.value.id, p.id))
 }
 
 // ── 4. Cierre ────────────────────────────────────────────────
 const puedeCerrar = computed(() => a.value.items.length > 0 && a.value.saldo <= 0)
 
-function cerrarAtencion() {
-  if (obsCambiadas.value && !confirm('Hay observaciones sin guardar. ¿Cerrar igual?')) return
+async function cerrarAtencion() {
+  const mensaje = 'Hay observaciones sin guardar. ¿Cerrar la atención igual?'
+  if (obsCambiadas.value && !(await confirmar({ titulo: 'Observaciones sin guardar', mensaje, aceptar: 'Cerrar igual' }))) return
   ejecutar(() => recepcion.cerrar(a.value.id))
 }
 
 async function anular() {
-  const motivo = prompt('Motivo de la anulación (p. ej. llegada marcada por error):')
+  const motivo = await pedirTexto({
+    titulo: 'Anular llegada',
+    etiqueta: 'Motivo de la anulación',
+    placeholder: 'P. ej. llegada marcada por error',
+    aceptar: 'Anular',
+    peligro: true,
+  })
   if (motivo === null) return
   if (await ejecutar(() => recepcion.anular(a.value.id, motivo))) emit('cerrar')
 }

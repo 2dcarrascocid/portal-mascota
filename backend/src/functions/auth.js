@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const config = require('../lib/config');
 const { supabase } = require('../lib/supabase');
 const { requerirUsuario } = require('../lib/auth');
@@ -376,6 +377,34 @@ function callbackOauth(nombre) {
     }
   });
 }
+
+// POST /auth/google/token  { credential }  -> { sesion, usuario, perfil, organizacion }
+// Botón "Sign in with Google" (Google Identity Services) del portal del
+// tutor: el frontend recibe un ID token firmado por Google y aquí se
+// verifica (firma, audiencia = nuestro client id, vencimiento).
+module.exports.googleToken = handler(async (event) => {
+  const { credential } = parseJson(event);
+  if (typeof credential !== 'string' || !credential) throw new HttpError(400, 'Falta la credencial de Google');
+  const clientId = config.googleClientId();
+  if (!clientId) throw new HttpError(503, 'El ingreso con Google no está configurado');
+
+  let p;
+  try {
+    const ticket = await new OAuth2Client(clientId).verifyIdToken({ idToken: credential, audience: clientId });
+    p = ticket.getPayload();
+  } catch {
+    throw new HttpError(401, 'No se pudo validar el ingreso con Google. Intenta de nuevo.');
+  }
+  const usuario = await usuarioDesdeProveedor('google_sub', {
+    id: p.sub,
+    email: p.email,
+    emailVerificado: !!p.email_verified,
+    nombre: p.name,
+    avatar: p.picture,
+  });
+  if (!usuario.activo) throw new HttpError(403, 'Usuario desactivado');
+  return respuestaSesion(200, usuario.id, event);
+});
 
 module.exports.google = iniciarOauth('google');
 module.exports.googleCallback = callbackOauth('google');

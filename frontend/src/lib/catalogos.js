@@ -51,7 +51,18 @@ export const MEDIOS_PAGO = {
   DEBITO: 'Débito',
   CREDITO: 'Crédito',
   TRANSFERENCIA: 'Transferencia',
+  WEBPAY: 'Webpay (internet)',
+  OTRO: 'Otro medio',
 }
+
+// Agrupación de los medios de pago en la cuadratura de caja (igual que la
+// RPC cash_day_summary; `clave` = campo del resumen y prefijo del cierre).
+export const CATEGORIAS_CAJA = [
+  { clave: 'cash', texto: 'Efectivo', medios: ['EFECTIVO'] },
+  { clave: 'card', texto: 'Tarjetas', medios: ['DEBITO', 'CREDITO'] },
+  { clave: 'online', texto: 'Internet', medios: ['TRANSFERENCIA', 'WEBPAY'] },
+  { clave: 'other', texto: 'Otros medios', medios: ['OTRO'] },
+]
 
 // day_of_week de la base: 0 = domingo
 export const DIAS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']

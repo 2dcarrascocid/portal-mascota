@@ -26,9 +26,10 @@ async function requerirAdminOrg(event) {
 
 const tienePermiso = (usuario, permiso) => usuario.permisos.includes(permiso);
 
+// `permiso`: uno o una lista (basta con tener alguno).
 async function requerirPermiso(event, permiso) {
   const usuario = await requerirPersonal(event);
-  if (!tienePermiso(usuario, permiso)) throw new HttpError(403, 'Tu rol no tiene permiso para hacer esto');
+  if (![].concat(permiso).some((p) => tienePermiso(usuario, p))) throw new HttpError(403, 'Tu rol no tiene permiso para hacer esto');
   return usuario;
 }
 

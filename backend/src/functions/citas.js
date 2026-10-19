@@ -19,11 +19,18 @@ const MAX_DIAS_BUSQUEDA = 31;
 
 const COLUMNAS =
   'id, branch_id, staff_id, date, start_time, end_time, service_id, specialty_id, client_id, pet_id, ' +
-  'contact_name, contact_phone, contact_email, notes, status, cancel_reason, created_at, ' +
+  'contact_name, contact_phone, contact_email, notes, status, cancel_reason, created_at, payment_status, payment_amount, ' +
   'client:clients(id, first_name, last_name, national_id, phone, email), pet:pets(id, name, species_id)';
+
+// Cancela las reservas del portal cuyo pago en línea venció (libera el turno).
+async function liberarReservasVencidas() {
+  const { error } = await supabase().rpc('release_expired_bookings');
+  if (error) throw errorDb(error);
+}
 
 // Citas que ocupan turno (todas menos las canceladas).
 async function citasVigentes(orgId, desde, hasta, staffIds) {
+  await liberarReservasVencidas();
   let consulta = supabase()
     .from('appointments')
     .select('staff_id, date, start_time, end_time')
@@ -76,16 +83,16 @@ async function profesionalesSegun(orgId, { staffId, cargo, specialtyId, serviceI
 }
 
 // Turnos libres por día para esos profesionales, sin horas ya pasadas.
-async function turnosLibres(usuario, { desde, hasta, staffIds, branchId }) {
+// permitidas: ids de las sucursales a mostrar (null = todas).
+async function turnosLibres(orgId, { desde, hasta, staffIds, branchId, permitidas = null }) {
   const ahora = d.ahoraLocal();
   const inicio = desde < ahora.fecha ? ahora.fecha : desde;
   if (hasta < inicio || !staffIds.length) return [];
 
-  const [bloques, excepciones, ocupados, permitidas] = await Promise.all([
-    cargarBloques(usuario.organization_id, { branchId }),
-    cargarExcepciones(usuario.organization_id, inicio, hasta, { branchId }),
-    citasVigentes(usuario.organization_id, inicio, hasta, staffIds),
-    sucursalesDe(usuario),
+  const [bloques, excepciones, ocupados] = await Promise.all([
+    cargarBloques(orgId, { branchId }),
+    cargarExcepciones(orgId, inicio, hasta, { branchId }),
+    citasVigentes(orgId, inicio, hasta, staffIds),
   ]);
   const dias = d.disponibilidad({
     bloques: bloques.filter((b) => staffIds.includes(b.staff_id)),
@@ -118,11 +125,12 @@ module.exports.disponibles = handler(async (event) => {
     specialtyId: q.specialtyId && v.uuid(q.specialtyId, 'specialtyId'),
     serviceId: q.serviceId && v.uuid(q.serviceId, 'serviceId'),
   });
-  const dias = await turnosLibres(usuario, {
+  const dias = await turnosLibres(usuario.organization_id, {
     desde,
     hasta,
     staffIds,
     branchId: q.branchId && v.uuid(q.branchId, 'branchId'),
+    permitidas: await sucursalesDe(usuario),
   });
   return json(200, { dias });
 });
@@ -232,7 +240,7 @@ module.exports.crear = handler(async (event) => {
   const [paciente, servicio] = await Promise.all([datosPaciente(body, org), datosServicio(body, org)]);
 
   // El turno debe existir en la programación y estar libre ahora mismo.
-  const dias = await turnosLibres(usuario, { desde: fecha, hasta: fecha, staffIds: [staffId], branchId });
+  const dias = await turnosLibres(org, { desde: fecha, hasta: fecha, staffIds: [staffId], branchId });
   const turno = dias[0]?.agendas
     .find((a) => a.staff_id === staffId && a.branch_id === branchId)
     ?.turnos.find((t) => t.inicio === inicio);
@@ -314,3 +322,7 @@ module.exports.eliminar = handler(async (event) => {
   return json(200, { ok: true });
 });
 
+module.exports.profesionalesSegun = profesionalesSegun;
+module.exports.turnosLibres = turnosLibres;
+module.exports.liberarReservasVencidas = liberarReservasVencidas;
+module.exports.MAX_DIAS_BUSQUEDA = MAX_DIAS_BUSQUEDA;

@@ -78,6 +78,10 @@ async function reenviar() {
         ¿No tienes cuenta?
         <RouterLink :to="{ name: 'registro', query: route.query }">Crear cuenta</RouterLink>
       </p>
+      <p class="suave pie">
+        ¿Eres tutor de mascotas?
+        <RouterLink :to="{ name: 'tutor-login' }">Ingresa al portal del tutor</RouterLink>
+      </p>
     </div>
 
     <EstadoSistema />
