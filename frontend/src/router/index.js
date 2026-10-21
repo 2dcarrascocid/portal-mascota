@@ -22,6 +22,7 @@ const COMPONENTES_CONFIGURACION = {
   'config-especialidades': () => import('../views/EspecialidadesView.vue'),
   'config-servicios': () => import('../views/ServiciosView.vue'),
   'config-agendas': () => import('../views/AgendasView.vue'),
+  'config-integraciones': () => import('../views/IntegracionesView.vue'),
 }
 
 const router = createRouter({

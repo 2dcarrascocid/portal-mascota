@@ -4,6 +4,8 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [vue()],
-  // Puerto fijo: debe coincidir con FRONTEND_URL del backend y con los orígenes autorizados en Google
-  server: { port: 5173, strictPort: true },
+  // Puerto preferido 5173 (el de FRONTEND_URL del backend y los orígenes autorizados en Google).
+  // Si está ocupado, Vite toma el siguiente libre (5174, 5175…); en ese puerto fallan CORS,
+  // el ingreso con Google y las vueltas desde el backend (verificación de correo, Webpay).
+  server: { port: 5173, strictPort: false },
 })

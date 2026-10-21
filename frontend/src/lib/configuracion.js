@@ -52,6 +52,13 @@ export const SECCIONES_CONFIGURACION = [
     descripcion: 'Catálogo de especies y razas para la ficha de las mascotas.',
     permiso: 'especies.ver',
   },
+  {
+    path: 'integraciones',
+    name: 'config-integraciones',
+    texto: 'Integraciones',
+    descripcion: 'Conexiones de servicios externos (p. ej. contactabilidad) con la agenda: credenciales y acceso.',
+    soloAdmin: true,
+  },
 ]
 
 // ¿Puede entrar a la sección? (`auth` = useAuth())
