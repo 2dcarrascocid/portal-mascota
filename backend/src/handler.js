@@ -18,6 +18,7 @@ const tutores = require('./functions/tutores');
 const notificaciones = require('./functions/notificaciones');
 const webpay = require('./functions/webpay');
 const portal = require('./functions/portal');
+const contactabilidad = require('./functions/contactabilidad');
 const { json } = require('./lib/http');
 
 const rutas = {
@@ -139,6 +140,20 @@ const rutas = {
   'POST /portal/citas/:id/pago': portal.pagarCita,
   'POST /portal/citas/:id/cancelar': portal.cancelarCita,
   'GET /portal/historial': portal.historial,
+
+  // Credenciales del sistema de contactabilidad (ORG_ADMIN)
+  'GET /integraciones/credenciales': contactabilidad.listarCredenciales,
+  'POST /integraciones/credenciales': contactabilidad.crearCredencial,
+  'DELETE /integraciones/credenciales/:id': contactabilidad.revocarCredencial,
+
+  // API inter-sistema para la contactabilidad (OAuth2 client credentials)
+  'POST /api/v1/oauth/token': contactabilidad.token,
+  'GET /api/v1/estados': contactabilidad.matrizEstados,
+  'GET /api/v1/citas/programadas': contactabilidad.programadas,
+  'POST /api/v1/citas/:id/estado': contactabilidad.actualizarEstado,
+  'POST /api/v1/citas/:id/liberar': contactabilidad.liberar,
+  'GET /api/v1/citas/:id/disponibles': contactabilidad.disponiblesReagenda,
+  'POST /api/v1/citas/:id/reagendar': contactabilidad.reagendar,
 
   'POST /notificaciones/email': notificaciones.enviarEmail,
   'POST /webpay/transacciones': webpay.crear,

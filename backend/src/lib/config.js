@@ -53,6 +53,8 @@ module.exports = {
     user: requerida('SMTP_USER'),
     pass: requerida('SMTP_PASS'),
     from: requerida('SMTP_FROM'),
+    // Opcional, solo para desarrollo/QA: desvía todos los correos a esta dirección.
+    redirigirA: process.env.CORREO_REDIRIGIR_A?.trim() || null,
   }),
 
   webpay: () => ({

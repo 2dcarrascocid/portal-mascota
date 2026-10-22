@@ -1,0 +1,7 @@
+Actualizacion en  configuracion -> Personal:
+1.- agregar los nombres y apellidos deben ir por sepadoos , rut chileno como unico,
+2.- eliminar cargo
+3.- agregar especialidad
+4.- agregar el rol debe ser un componente separado y debe invcarse con un boton
+5.- debe traer todo el personal paginado creado listados en una tabla con un acolumno con un boton acciones para realizacion de actualizaciones, modficacion de roles
+6.-  el crear nuevo debe ser un componenet nuevo y distinto qwue invoque con u boton 

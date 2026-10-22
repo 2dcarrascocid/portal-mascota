@@ -39,6 +39,7 @@ provider:
     SMTP_PASS: ${env:SMTP_PASS}
     SMTP_SECURE: ${env:SMTP_SECURE, 'false'}
     SMTP_FROM: ${env:SMTP_FROM}
+    CORREO_REDIRIGIR_A: ${env:CORREO_REDIRIGIR_A, ''}  # solo pruebas: desvía todos los correos a esta dirección
     WEBPAY_HOST: ${env:WEBPAY_HOST}
     WEBPAY_API_KEY: ${env:WEBPAY_API_KEY}
     WEBPAY_COMMERCE_CODE: ${env:WEBPAY_COMMERCE_CODE}
